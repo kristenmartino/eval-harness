@@ -1,0 +1,19 @@
+[project]
+name = "eval-harness"
+version = "0.2.0"
+description = "Open-weight vs frontier LLM eval harness on Sift production workload"
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [{ name = "Kristen Martino" }]
+
+# Intentionally zero runtime dependencies — stdlib-only harness and pre-flight
+# scripts are part of the reproducibility pitch in spec §6. If a dep gets added
+# in the future (e.g., for retries / rate-limiting in adapters), document the
+# justification in CHANGELOG.md.
+
+[project.optional-dependencies]
+test = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]

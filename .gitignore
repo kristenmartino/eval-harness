@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+build/
+dist/
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Results (per-machine outputs — regenerable; contain hostnames + filesystem paths)
+results/*.jsonl
+results/*.json
+!results/.gitkeep
+
+# Sift data — NEVER commit production article corpora
+data/corpus.jsonl
+data/articles.jsonl
+data/holdout/
+data/dev/
+!data/sample_*.jsonl
+
+# Secrets — NEVER commit
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+secrets/
+credentials/
+
+# Claude/agent notes that live outside the repo
+.claude/
