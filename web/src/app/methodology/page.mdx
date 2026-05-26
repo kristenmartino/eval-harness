@@ -1,0 +1,187 @@
+export const metadata = {
+  title: "Methodology — Eval Harness",
+  description:
+    "Publication-quality methodology for evaluating 9 LLMs across 4 production tasks. Cross-vendor judging, hardware-amortized cost, verifiable held-out lock, Bradley-Terry pairwise ranking.",
+};
+
+# Methodology
+
+**Status:** Publication-quality draft. Execution-derived numbers marked `[TK]` until Phase 1 runs complete.
+**Audience:** ML engineers and researchers who want to evaluate the eval. The 2-minute landing summary lives on the [front page](/); this page is the deep link.
+**Last updated:** 2026-05-26
+**Source:** [spec v0.2](https://github.com/kristenmartino/eval-harness/blob/main/eval-harness-spec.md) · [decision log](https://github.com/kristenmartino/eval-harness/blob/main/CHANGELOG.md) · [repo](https://github.com/kristenmartino/eval-harness)
+
+---
+
+## 1. What this evaluates
+
+Public LLM benchmarks (MMLU, HumanEval, BIG-bench) measure general capability on synthetic tasks. They tell you whether a model is competent in the abstract. They don't tell you whether a specific open-weight model can replace a frontier API in *your actual production pipeline* without quality regression — which is the practical question that determines whether to switch.
+
+This harness fills that gap. It runs nine LLMs (five open-weight on local hardware, four closed-weight via API) through four real Sift pipeline stages — categorization, summarization, structured extraction, and grounded RAG — using the same prompts and the same eval data Sift itself processes. The output is a decision-support tool for model selection on a production system, supplemented by a methodology you can apply to any agent.
+
+The secondary goal is reusability: the harness's adapter/task abstractions make it portable across other ML products (GridPulse, Tarazu, GTM Healthcare Intelligence) by swapping the dataset and task modules.
+
+## 2. Models under test
+
+Nine models, split into three groups by deployment role:
+
+**Open-weight, deployment-feasible** — eligible for hybrid-routing recommendations:
+- Llama 3.1 8B Instruct
+- Qwen 2.5 7B Instruct
+- Qwen 2.5 14B Instruct
+- DeepSeek V2 Lite (V3 if quantized fits in DGX Spark unified memory)
+
+**Open-weight, quality-ceiling reference** — included in quality tables but excluded from deployment cost view:
+- Llama 3.1 70B Instruct (Q4 quantized) — reported as an upper bound on what open-weight can achieve, but expected DGX Spark throughput (~10–15 tok/s, ~20s/article) is infeasible at Sift's daily volume. The §8 timing benchmark confirms or rejects this split before the full eval runs.
+
+**Closed-weight reference** (via API):
+- Claude Haiku 4.5 — Sift's current production model; the bar to beat
+- Claude Sonnet 4.6 — quality upper bound; also serves as cross-vendor judge for non-Anthropic pairs in Task B
+- GPT-4o — cross-vendor judge for Anthropic-containing pairs in Task B; also a candidate
+- GPT-4o-mini — cross-vendor reference point
+
+**Selection criteria:** license compatibility (commercial use), Ollama availability, parameter-size coverage (7B / 14B / 70B), vendor diversity (Meta / Alibaba / DeepSeek). Mistral, Phi-4, and Gemma 3 are deferred to v2.
+
+## 3. Tasks
+
+### Task A — Article categorization
+**Workload:** classify each article into one of Sift's existing categories.
+**Why this task:** the highest-volume pipeline stage (~thousands of articles/day) — biggest cost lever for hybrid routing.
+**Output:** single category label.
+**Metric:** accuracy + macro-F1.
+
+Macro-F1 is reported alongside accuracy because Sift's category distribution is imbalanced (the §8 pre-flight check drops categories with fewer than 20 articles rather than upsampling — upsampling biases macro-F1 upward). Label noise rate computed from disagreements on a 100-article re-validation pass against Set 1; the noise rate is reported alongside accuracy so the headline number is interpretable.
+
+### Task B — Article summarization
+**Workload:** generate the 2–3 sentence summary that appears in Sift's UI.
+**Why this task:** user-facing quality matters most; this is the layer where I most expect to keep Claude.
+**Output:** free text, ≤60 words.
+**Metric:** Bradley-Terry pairwise preference + length compliance rate + factuality flag rate.
+
+Pairwise preference is computed across all 36 model pairs at N items per pair, fit with the Bradley-Terry MM algorithm ([Hunter 2004](https://www.jstor.org/stable/3448513)) to a global ranking. To control for self-preference bias — LLM judges measurably favor their own outputs ([Panickssery, Bowman & Feng 2024](https://arxiv.org/abs/2404.13076); see also [Stureborg, Alikaniotis & Suhara 2024](https://arxiv.org/abs/2405.01724)) — judges are assigned cross-vendor: **Sonnet 4.6 judges non-Anthropic-containing pairs (21 of 36 at 9 models); GPT-4o judges Anthropic-containing pairs (15 of 36).** This eliminates the case where Sonnet's own outputs are judged by Sonnet.
+
+To verify the two judges are calibrated on a common scale, a 50-pair overlap subset (randomly drawn from the Sonnet-judged set) is judged by BOTH. Inter-judge Cohen's kappa is reported; if kappa &lt;0.6, this is flagged as a methodology limitation and the ranking is reported with a caveat.
+
+Statistical power: n=200 items × N=3 samples enables ~10pp preference-difference detection at p&lt;0.05. Below that threshold, ties are reported as ties — no spurious ranking claims. v0.3 considers n=400.
+
+### Task C — Structured extraction
+**Workload:** extract named entities (people, organizations, locations) and key claims from article body.
+**Why this task:** common agentic-pipeline subtask; tests whether open-weight models can hold structured-output schemas.
+**Output:** JSON matching a fixed schema (Pydantic-validated).
+**Metrics (two, reported separately):**
+
+1. **JSON validity rate** — fraction of outputs that parse and conform to schema. Measures schema-adherence capability.
+2. **Entity F1, conditional on validity** — F1 against human-curated ground truth, computed only on schema-valid outputs.
+
+Splitting these two metrics prevents conflating "weak at JSON" with "weak at extraction." Outputs that fail schema validation are excluded from F1 computation but counted against the validity rate.
+
+Ground truth from manual annotation per [`rubrics/set3_entity_annotation.md`](https://github.com/kristenmartino/eval-harness/blob/main/rubrics/set3_entity_annotation.md). Inter-annotator agreement (IAA) verified before any items are scored: 10 calibration articles dual-annotated by Kristen and a second annotator, target entity-F1 ≥0.85. Calibration articles are drawn from outside Set 1's eval pool — calibration doesn't burn eval items. Final IAA score: `[TK]`.
+
+Decision rules for ambiguous spans are documented in the rubric: brand names = parent-company only; financial instruments = underlying entity (not ticker/benchmark); shortest-contiguous-span tie-breaker.
+
+### Task D — RAG answer generation
+**Workload:** given a user question + top-k retrieved Sift articles, generate a grounded answer with citations.
+**Why this task:** the agentic capability the rest of the industry actually cares about.
+**Output:** answer text with inline citation indices.
+**Metric:** faithfulness (LLM-judge: does every claim trace to a cited source?) + answer relevance + citation precision.
+
+Judge: Sonnet 4.6 (faithfulness scoring on n=50 main set × N=3 samples = 1,350 judge calls).
+
+**Adversarial subset (n=20):** questions whose answers are NOT in Sift's corpus, tagged into three subtypes (outside-corpus, almost-match, counterfactual). Scored on a binary refusal metric — does the model abstain when retrieval fails, or hallucinate? Reported separately from main RAG faithfulness; n=20 chosen for binomial CI discriminating ~20pp refusal-rate differences at 95% confidence.
+
+Temporal questions in the main set anchor explicit dates ("What did the Fed announce in March 2026?") rather than relative time ("last month") — protects reproducibility from corpus-update drift.
+
+### Safety smoke test (n=50)
+**Purpose:** detect deployment-blocking regressions (toxicity, PII handling, refusal calibration) if Sift were to swap Haiku for an open-weight model.
+**Composition:** 20 toxicity calibration + 15 PII handling + 15 refusal calibration prompts.
+**Judge:** Sonnet 4.6 (single judge — this is regression-detection, not preference).
+**Reporting:** side panel on the leaderboard, not a primary metric.
+
+## 4. Datasets
+
+Four eval sets, all drawn from Sift's existing corpus — the differentiator vs. synthetic benchmarks.
+
+| Set | Task | n | Ground truth |
+|---|---|---|---|
+| 1 | A — Categorization | 500 (stratified across categories) | Sift's existing labels, with 100-item sub-validation for label noise |
+| 2 | B — Summarization | 200 (random) | No reference — pairwise preference handles it |
+| 3 | C — Extraction | 100 (manually annotated) | Per `rubrics/set3_entity_annotation.md`; IAA ≥0.85 |
+| 4 | D — RAG main | 50 (hand-written) | Reference answer + gold supporting article IDs |
+| 4-adv | D — RAG adversarial | 20 (hand-written) | Expected refusal behavior |
+
+**Held-out discipline:** 20% of each set is held out for final scoring only — never seen during prompt iteration.
+
+**Locking mechanism (verifiable, not vibes-based):**
+- Held-out items stored in `data/holdout/` separately from `data/dev/`.
+- `holdout.sha256` file committed to git before any prompt iteration begins.
+- Prompt-iteration scripts only have read access to `data/dev/`; held-out access requires an explicit runner flag.
+- Final-scoring run commits results alongside the unchanged hash file. Any reviewer can verify (a) the hash hasn't changed since the pre-iteration commit, (b) the runner invocation logs include the held-out flag only on the final run.
+
+## 5. Sampling and inference
+
+**Temperature:** 0 for Tasks A and C (deterministic outputs expected). 0.7 with N=3 samples for Tasks B and D (generation tasks). Mean + bootstrap 95% CI on N=3 generations `[TK: bootstrap resample count]`. Adversarial subset uses N=1 (binary metric, no sampling benefit).
+
+**Chat templates:** identical prompt *content* across models, but each model's content is wrapped in its own tokenizer's native chat template (Llama 3 format, Qwen `<|im_start|>`, DeepSeek format, Anthropic Messages API, OpenAI ChatML). A foreign chat template measurably degrades performance for tokenizer reasons unrelated to the underlying capability — so the prompt content is shared, the framing is native. This distinction is documented in the v0.2 spec critique edit #8.
+
+**Latency measurement:** p50 and p95 over the full eval set. Local models report cold-start separately from warm inference. API models measure end-to-end including network.
+
+## 6. Cost methodology
+
+Two cost categories, reported separately. The methodology here is the most-probed part of the eval — get it right and defensible.
+
+**API models** — direct token-priced cost at posted rates as of run date. Pricing pinned in [`scripts/judge_cost_budget.py`](https://github.com/kristenmartino/eval-harness/blob/main/scripts/judge_cost_budget.py) so any reader can re-cost.
+
+**Local models** — amortized:
+
+```
+hourly_amortized = capex_usd / (3 years × 365 × 24 hours)
+total_cost = hourly_amortized × wall_clock_hours + electricity_kwh × kwh_rate
+```
+
+- DGX Spark capex: `[TK $]`
+- 3-year useful life assumption: 26,280 hours
+- FL residential electricity rate: `[TK $/kWh]`
+- Measured power draw under load: `[TK W]`
+
+Current view assumes hardware is sunk (matches an individual developer / single-product use case). A dual view — "fully-loaded cost at production scale" — is deferred to v0.3 for the procurement audience. Reasoning: the v1 audience is hybrid-routing decisions for an existing product; the v2 audience is greenfield procurement.
+
+**Projected v0.2 API spend:** $99.96 (4 closed-weight × 4 tasks + safety + cross-judge overlap), 3.1 hours wall-clock at 50 RPM rate limit. Sonnet 4.6 is 69% of the spend because it's both a candidate and the primary judge.
+
+## 7. Reproducibility
+
+Every results JSONL embeds a `_meta: true` header row with:
+- `model_id` — exact model name + snapshot ID (e.g., `claude-sonnet-4-6-20260101` for closed-weight; `llama3.1:8b-instruct-q4_0:<HF SHA prefix>` for open-weight)
+- `dataset_sha256_prefix` — 16-char hash of the dataset file at run time
+- `harness_git_sha` — current git commit
+- `host` — hardware ID
+- `started_at` — UTC timestamp
+
+Prompt content is hashed and stored in `prompts/` with the version embedded in each task module. The Ollama version is documented separately in [`CHANGELOG.md`](https://github.com/kristenmartino/eval-harness/blob/main/CHANGELOG.md).
+
+Any leaderboard cell traces to (a) the exact model weights, (b) the exact dataset version, (c) the exact prompt, (d) the exact harness code state. No leaderboard claim is unfalsifiable.
+
+## 8. Pretraining contamination
+
+Sift's source articles are public news. Most models under test were pretrained on web crawls that likely include the original article text — though not Sift's downstream summaries, categorizations, or extractions. The eval measures *pipeline behavior on those articles* (categorize them, summarize them, extract from them, RAG over them), not novel-text generalization. This is acknowledged rather than worked around — the alternative (synthetic articles) would defeat the "real production workload" claim.
+
+## 9. Known limitations
+
+- **Single-turn only.** Multi-turn agentic tasks deferred to v2.
+- **No fine-tuning or LoRA adaptation** of open-weight models. v1 evaluates off-the-shelf capability.
+- **No tool use / function calling.** Deferred to v2.
+- **English-only content.**
+- **No vendor-specific optimizations** (Anthropic prompt caching, OpenAI structured outputs mode) — keep prompts portable.
+- **Models requiring multi-GPU parallelism** beyond DGX Spark capacity are excluded.
+
+## 10. Open methodology questions (v0.3 candidates)
+
+These were identified in the v0.1→v0.2 critique round but deferred until post-Task-A signal:
+
+- **Statistical power for Task B.** Current n=200 → ~10pp detection. v0.3 may bump to n=400 if early findings show tight clustering between models.
+- **Formal qualitative error-analysis taxonomy.** Failure-mode tagging across (model, task) — defined post-Task-A so the taxonomy reflects observed failure modes rather than hypothetical ones.
+- **Dual-view cost methodology.** Individual-developer (current) vs production-scale (fully-loaded capex + ops). Adds procurement-audience framing.
+- **Sonnet 4.6 snapshot deprecation policy.** If the snapshot deprecates mid-eval, re-run or pin-and-disclaim? Decision point only matters if it actually happens.
+
+---
+
+*Decision log and changelog: see [CHANGELOG.md](https://github.com/kristenmartino/eval-harness/blob/main/CHANGELOG.md). Full spec: [eval-harness-spec.md](https://github.com/kristenmartino/eval-harness/blob/main/eval-harness-spec.md).*

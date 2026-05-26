@@ -1,0 +1,156 @@
+@import "tailwindcss";
+
+@theme {
+  /* ── fonts (variables provided by next/font in layout.tsx) ── */
+  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* ── palette (semantic) ── */
+  --color-ink: #0a0a0a;
+  --color-soot: #161616;
+  --color-graphite-90: #262626;
+  --color-graphite-80: #393939;
+  --color-graphite-60: #7a7a7a;
+  --color-graphite-40: #a8a8a8;
+  --color-graphite-20: #d1d1d1;
+  --color-graphite-10: #e8e8e8;
+  --color-paper: #f4f4f4;
+  --color-bone: #ffffff;
+  --color-signal-blue: #0f62fe;
+  --color-signal-blue-deep: #0043ce;
+  --color-signal-blue-soft: #a6c8ff;
+  --color-signal-teal: #08bdba;
+  --color-signal-magenta: #ee5396;
+
+  /* ── type scale (fluid) ── */
+  --text-caption: 0.6875rem;
+  --text-meta: 0.75rem;
+  --text-small: 0.8125rem;
+  --text-body: 1rem;
+  --text-lead: 1.125rem;
+  --text-h4: clamp(1.125rem, 1.4vw + 0.5rem, 1.375rem);
+  --text-h3: clamp(1.375rem, 2vw + 0.5rem, 1.875rem);
+  --text-h2: clamp(1.875rem, 3.6vw + 0.5rem, 2.625rem);
+  --text-h1: clamp(2.25rem, 5vw + 0.5rem, 3.75rem);
+  --text-display: clamp(2.8rem, 7vw + 0.5rem, 6rem);
+
+  /* ── tracking ── */
+  --tracking-display: -0.04em;
+  --tracking-tight: -0.02em;
+  --tracking-snug: -0.01em;
+  --tracking-mono: 0.18em;
+  --tracking-mono-tight: 0.12em;
+
+  /* ── leading ── */
+  --leading-display: 0.92;
+  --leading-tight: 1.1;
+  --leading-snug: 1.3;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+
+  /* ── motion ── */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 180ms;
+  --dur-base: 400ms;
+  --dur-slow: 700ms;
+}
+
+/* ── base ── */
+html {
+  position: relative;
+  scroll-behavior: smooth;
+  background-color: var(--color-soot);
+  color: var(--color-bone);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+body {
+  position: relative;
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01", "kern", "liga";
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ── focus ring (a11y floor) ── */
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-signal-blue);
+  outline-offset: 3px;
+  border-radius: 1px;
+}
+
+/* ── selection ── */
+::selection {
+  background-color: var(--color-signal-blue);
+  color: var(--color-bone);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-group(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
+}
+
+/* ── code blocks inside MDX (multiline) ── */
+.prose-mdx pre {
+  background-color: var(--color-ink);
+  border: 1px solid var(--color-graphite-90);
+  border-radius: 0.25rem;
+  padding: 1rem 1.25rem;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--color-graphite-10);
+  margin: 1.5rem 0;
+  max-width: 56rem;
+}
+
+.prose-mdx pre code {
+  background: transparent !important;
+  padding: 0 !important;
+  border: 0 !important;
+  font-size: inherit !important;
+}
+
+/* ── tables inside MDX ── */
+.prose-mdx table {
+  width: 100%;
+  max-width: 56rem;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  font-size: 0.9375rem;
+}
+
+.prose-mdx th,
+.prose-mdx td {
+  text-align: left;
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid var(--color-graphite-90);
+  color: var(--color-graphite-20);
+  vertical-align: top;
+}
+
+.prose-mdx th {
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-mono-tight);
+  color: var(--color-graphite-40);
+  font-weight: 500;
+  border-bottom: 1px solid var(--color-graphite-80);
+}
