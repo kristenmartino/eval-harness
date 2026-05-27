@@ -49,3 +49,6 @@ credentials/
 
 # Claude/agent notes that live outside the repo
 .claude/
+
+# Launch + marketing drafts (working files, not for publishing)
+docs/launch-posts.md
