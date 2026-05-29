@@ -7,9 +7,11 @@ Production runs MUST pin a dated snapshot in model_name per spec §8 (e.g.,
 'claude-sonnet-4-6-20260101'). The model_id used in results JSONL is exactly
 the model_name — snapshot pinning lives in what you pass to the constructor.
 
-Single-attempt: no retries here. A failure surfaces to the runner, which
-records it as an `error` row (visible for debugging and cost accounting) and
-re-attempts it on the next resume run.
+Single-attempt by contract: this adapter never retries internally. The runner
+owns reliability — it retries transient failures (network errors, timeouts,
+429/5xx) in-process with exponential backoff, and records a permanent or
+retry-exhausted failure as an `error` row (visible for debugging and cost
+accounting) that the next resume run re-attempts.
 """
 
 import json

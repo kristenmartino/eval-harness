@@ -42,7 +42,7 @@ The credibility of a leaderboard is mostly in its methodology, not its numbers. 
 ## Current status
 
 - **Spec v0.2** locked, with cross-judge calibration overlap and adversarial subset for grounding-hygiene measurement.
-- **Harness infrastructure** end-to-end: adapter Protocol (Ollama + Anthropic + OpenAI), task modules (categorization + summarization), runner with reproducibility headers + resumability + enforced held-out gate + CLI, Bradley-Terry pairwise ranking, 47 tests passing (math, judge parsing, runner reproducibility + held-out gate), GitHub Actions CI.
+- **Harness infrastructure** end-to-end: adapter Protocol (Ollama + Anthropic + OpenAI), task modules (categorization + summarization), runner with reproducibility headers + resumability + enforced held-out gate + transient retry/backoff + CLI, Bradley-Terry pairwise ranking, 58 tests passing (math, judge parsing, runner reproducibility + held-out gate + retry/backoff), GitHub Actions CI.
 - **Pre-flight scripts** complete (5 stdlib-only): timing benchmark, length-stratified sampler, category distribution check, API cost estimator, annotation validator.
 - **Annotation rubrics** drafted for entity extraction (with second-annotator IAA protocol) and RAG question authoring (including a 20-item adversarial subset).
 - **Projected v0.2 API spend:** $99.96 total, ~3 hours judge wall-clock.

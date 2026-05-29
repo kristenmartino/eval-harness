@@ -10,11 +10,13 @@ Design notes:
   the current run's identity (model_id, task, dataset hash, n_samples,
   held-out) and the runner REFUSES to append on mismatch — so an output file
   can't silently accumulate rows from two different (model, task, dataset).
-- Failures (API errors, parse exceptions) write a row with an `error` field
-  rather than halting — keeps multi-hour runs robust. Adapters do not retry
-  in-process; an error row is left un-`done` so the next resume run re-attempts
-  it. (Runner-level retry/backoff is a planned follow-up; until then "retry"
-  means "resume.")
+- Reliability is layered. Transient adapter failures (network errors, timeouts,
+  429/5xx — see _is_transient) are retried in-process with exponential backoff,
+  tunable via max_attempts/backoff_base on run(). A permanent failure, or a
+  transient one that exhausts its retries, writes a row with an `error` field
+  (annotated with `attempts` + `error_classification`) rather than halting, and
+  is left un-`done` so the next resume run re-attempts it. In short: in-process
+  retry absorbs blips; resume absorbs anything that outlives the process.
 - Held-out discipline (spec §5): a held-out dataset can only be run with
   include_held_out=True, and is verified against a committed SHA-256 manifest
   (`data/holdout.sha256`, produced by scripts/lock_holdout.py) before any
@@ -35,6 +37,7 @@ import socket
 import subprocess
 import sys
 import time
+import urllib.error
 from pathlib import Path
 
 from adapters.base import ModelAdapter
@@ -58,6 +61,30 @@ class ResumeHeaderMismatch(RuntimeError):
 _RESUME_IDENTITY_KEYS = (
     "model_id", "task", "dataset_sha256_prefix", "n_samples", "held_out",
 )
+
+
+# HTTP statuses worth retrying: request-timeout / conflict / too-early /
+# rate-limit, plus the 5xx server-side failures. Every other status (notably
+# 4xx like 400/401/403/404) is a permanent client error we must not hammer.
+_RETRYABLE_HTTP_STATUS = frozenset({408, 409, 425, 429, 500, 502, 503, 504})
+
+
+def _is_transient(exc: BaseException) -> bool:
+    """Classify an adapter exception as transient (worth an in-process retry)
+    vs permanent (record and move on).
+
+    urllib.error.HTTPError is checked FIRST because it subclasses URLError: a
+    401/403/404 is a permanent client error even though isinstance(exc, URLError)
+    is True for it. Only the retryable statuses above are transient. Connection-
+    level failures (URLError without a status, timeouts, refused connections) are
+    always transient; anything else — including a deterministic parse/score bug
+    surfacing from task code — is permanent and must not be retried.
+
+    Note: socket.timeout is listed alongside TimeoutError because it is only an
+    alias for it on Python 3.10+, and this harness supports 3.9 (pyproject)."""
+    if isinstance(exc, urllib.error.HTTPError):
+        return exc.code in _RETRYABLE_HTTP_STATUS
+    return isinstance(exc, (urllib.error.URLError, TimeoutError, socket.timeout, ConnectionError))
 
 
 def _git_sha(repo_root: Path) -> str:
@@ -223,12 +250,22 @@ def _load_dataset(path: Path) -> list:
 def run(adapter: ModelAdapter, task: Task, dataset_path: Path,
         output_path: Path, n_samples: int = 1, repo_root: Path = None,
         include_held_out: bool = False, split: str = "auto",
-        holdout_manifest: Path = None) -> dict:
+        holdout_manifest: Path = None,
+        max_attempts: int = 3, backoff_base: float = 0.5) -> dict:
     """Execute one (adapter, task, dataset) run. Returns summary stats.
 
     split: "auto" detects held-out by path (see _is_holdout); "dev"/"holdout"
     force it. A held-out run requires include_held_out=True and a matching lock
-    manifest (default data/holdout.sha256 under repo_root)."""
+    manifest (default data/holdout.sha256 under repo_root).
+
+    max_attempts: total attempts per item including the first (1 disables retry).
+    backoff_base: exponential backoff seconds — between attempt N (0-based) and
+    the next, the runner sleeps backoff_base * 2**N. Only transient failures
+    (see _is_transient) are retried; permanent ones are recorded immediately."""
+    if max_attempts < 1:
+        raise ValueError(f"max_attempts must be >= 1, got {max_attempts}")
+    if backoff_base < 0:
+        raise ValueError(f"backoff_base must be >= 0, got {backoff_base}")
     dataset_path = Path(dataset_path)
     output_path = Path(output_path)
     repo_root = Path(repo_root) if repo_root else dataset_path.parent
@@ -266,6 +303,7 @@ def run(adapter: ModelAdapter, task: Task, dataset_path: Path,
     n_new = 0
     n_skip = 0
     n_error = 0
+    n_retries = 0
 
     with output_path.open("a") as out:
         if is_new:
@@ -285,21 +323,35 @@ def run(adapter: ModelAdapter, task: Task, dataset_path: Path,
                     "sample_idx": s,
                 }
                 prompt = task.prompt_template(item)
-                try:
-                    completion = adapter.complete(prompt, task.sampling_params)
-                    parsed = task.parse_output(completion.text)
-                    scored = task.score(parsed, item)
-                    row.update({
-                        "raw_output": completion.text,
-                        "input_tokens": completion.input_tokens,
-                        "output_tokens": completion.output_tokens,
-                        "latency_ms": completion.latency_ms,
-                        "score": scored,
-                    })
-                    n_new += 1
-                except Exception as e:
-                    row["error"] = f"{type(e).__name__}: {e}"
-                    n_error += 1
+                for attempt in range(max_attempts):
+                    try:
+                        completion = adapter.complete(prompt, task.sampling_params)
+                        parsed = task.parse_output(completion.text)
+                        scored = task.score(parsed, item)
+                        row.update({
+                            "raw_output": completion.text,
+                            "input_tokens": completion.input_tokens,
+                            "output_tokens": completion.output_tokens,
+                            "latency_ms": completion.latency_ms,
+                            "score": scored,
+                        })
+                        n_new += 1
+                        break
+                    except Exception as e:
+                        transient = _is_transient(e)
+                        if transient and attempt < max_attempts - 1:
+                            time.sleep(backoff_base * 2 ** attempt)
+                            n_retries += 1
+                            continue
+                        # Permanent, or transient with no attempts left: record
+                        # the failure (un-`done`, so resume re-attempts it) with
+                        # enough provenance to tell "gave up after N" from "never
+                        # retried".
+                        row["error"] = f"{type(e).__name__}: {e}"
+                        row["attempts"] = attempt + 1
+                        row["error_classification"] = "transient" if transient else "permanent"
+                        n_error += 1
+                        break
                 out.write(json.dumps(row) + "\n")
                 out.flush()
 
@@ -307,6 +359,7 @@ def run(adapter: ModelAdapter, task: Task, dataset_path: Path,
         "completed": n_new,
         "skipped_resume": n_skip,
         "errors": n_error,
+        "transient_retries": n_retries,
         "held_out": held_out,
         "output": str(output_path),
     }
@@ -366,6 +419,10 @@ def main(argv=None) -> int:
     p.add_argument("--mock-responses", default=None,
                    help="JSON file mapping prompt-substring -> response (mock adapter)")
     p.add_argument("--n-samples", type=int, default=1)
+    p.add_argument("--max-attempts", type=int, default=3,
+                   help="total attempts per item incl. the first try (1 disables retry)")
+    p.add_argument("--backoff-base", type=float, default=0.5,
+                   help="exponential backoff seconds: sleep = base * 2**attempt (0 = no wait)")
     p.add_argument("--split", default="auto", choices=["auto", "dev", "holdout"])
     p.add_argument("--include-held-out", action="store_true", default=False,
                    help="REQUIRED to run against a held-out set (off by default).")
@@ -381,9 +438,11 @@ def main(argv=None) -> int:
             n_samples=args.n_samples, repo_root=repo_root,
             include_held_out=args.include_held_out, split=args.split,
             holdout_manifest=args.holdout_manifest,
+            max_attempts=args.max_attempts, backoff_base=args.backoff_base,
         )
-    except (HeldOutAccessError, HoldoutLockError, ResumeHeaderMismatch) as e:
-        # Expected guardrail trips — report cleanly, no traceback.
+    except (HeldOutAccessError, HoldoutLockError, ResumeHeaderMismatch, ValueError) as e:
+        # Expected guardrail trips / bad inputs (unknown task, bad --max-attempts) —
+        # report cleanly, no traceback.
         print(f"error: {e}", file=sys.stderr)
         return 2
     print(json.dumps(summary, indent=2))

@@ -53,8 +53,10 @@ class ModelAdapter(Protocol):
 
     def complete(self, prompt: str, params: SamplingParams) -> Completion:
         """Run one generation. Implementations MUST NOT retry transparently —
-        a raised exception is recorded by the runner as an `error` row (kept
-        visible for debugging and cost accounting) and re-attempted on the next
-        resume run. (In-process retry/backoff in the runner is a planned
-        follow-up; today "retry" means "resume.")"""
+        retry is the runner's job, not the adapter's. The runner classifies a
+        raised exception (eval.runner._is_transient) and retries transient
+        failures (network errors, timeouts, 429/5xx) in-process with exponential
+        backoff. A permanent failure — or a transient one that exhausts its
+        retries — is recorded as an `error` row (kept visible for debugging and
+        cost accounting) and re-attempted on the next resume run."""
         ...
