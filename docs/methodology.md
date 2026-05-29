@@ -105,11 +105,12 @@ Four eval sets, all drawn from Sift's existing corpus — the differentiator vs.
 
 **Held-out discipline:** 20% of each set is held out for final scoring only — never seen during prompt iteration.
 
-**Locking mechanism (verifiable, not vibes-based):**
-- Held-out items stored in `data/holdout/` separately from `data/dev/`.
-- `holdout.sha256` file committed to git before any prompt iteration begins.
-- Prompt-iteration scripts only have read access to `data/dev/`; held-out access requires an explicit runner flag.
-- Final-scoring run commits results alongside the unchanged hash file. Any reviewer can verify (a) the hash hasn't changed since the pre-iteration commit, (b) the runner invocation logs include the held-out flag only on the final run.
+**Locking mechanism (implemented and enforced, not vibes-based):**
+- Held-out items live in `data/holdout/` (gitignored — private corpus), separately from `data/dev/`.
+- A SHA-256 lock manifest is committed to git before any prompt iteration (`data/holdout.sha256`, produced by `scripts/lock_holdout.py`). The data stays private; only the hash is public.
+- Held-out access requires the runner's explicit `--include-held-out` flag (default off). Without it the runner refuses to load a held-out set (`eval/runner.py`).
+- Before scoring, the runner re-hashes the set and verifies it against the manifest, refusing to run on any mismatch (tamper or accidental edit). The final-run header records `held_out: true` plus the verified aggregate hash — so a reviewer can confirm (a) the committed hash never moved, (b) held-out inclusion is provable from the run header itself.
+- The mechanism, a sample lock, and tamper-detection tests ship now; the real Set-1 lock is committed at corpus pull (Phase 1).
 
 ## 5. Sampling and inference
 

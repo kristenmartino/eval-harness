@@ -98,7 +98,7 @@
 
 **Setup.** The held-out 20% can't be touched during prompt iteration. But the harness needs end-to-end testing before the real eval runs. How do I validate the pipeline without burning held-out items?
 
-**Decision.** Built a `MockAdapter` that returns canned responses, plus a 5-article sample dataset that lives outside both the dev and holdout sets. The full harness pipeline (adapter → task → runner → JSONL → metric aggregation) runs end-to-end on the sample. 25 unit tests cover the load-bearing math (Bradley-Terry MM, macro-F1, accuracy with parse failures, JSONL with line-number errors). The held-out set never gets touched until the final scoring run.
+**Decision.** Built a `MockAdapter` that returns canned responses, plus sample datasets (a dev sample and a held-out fixture) that live outside the real dev and holdout sets. The full harness pipeline (adapter → task → runner → JSONL → metric aggregation) runs end-to-end on the sample. 47 unit tests cover the load-bearing math (Bradley-Terry MM, macro-F1 with length guards, accuracy with parse failures, JSONL with line-number errors), judge verdict parsing (a malformed verdict is flagged, never silently scored as a tie), and the runner's held-out gate. And the held-out discipline isn't policy — it's enforced in code: the runner refuses a held-out set without `--include-held-out` and verifies it against a committed SHA-256 lock before scoring.
 
 **Outcome.** Pipeline verified before any real model runs. When Sift's corpus is pulled and the real eval begins, the harness is known-correct.
 
