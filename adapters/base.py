@@ -53,6 +53,8 @@ class ModelAdapter(Protocol):
 
     def complete(self, prompt: str, params: SamplingParams) -> Completion:
         """Run one generation. Implementations MUST NOT retry transparently —
-        the runner handles retries to keep failures visible in results JSONL
-        for debugging and cost accounting."""
+        a raised exception is recorded by the runner as an `error` row (kept
+        visible for debugging and cost accounting) and re-attempted on the next
+        resume run. (In-process retry/backoff in the runner is a planned
+        follow-up; today "retry" means "resume.")"""
         ...

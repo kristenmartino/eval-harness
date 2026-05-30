@@ -1,0 +1,15 @@
+{
+  "schema": "holdout-lock/v1",
+  "dataset_file": "data/sample_holdout.jsonl",
+  "n_items": 6,
+  "aggregate_sha256": "211ce00ce4121f77562108eb2838508d215e3e7754c0b3c1c3451d6559334723",
+  "item_sha256": [
+    "396bdea9726524980b3fb05e28a567690c34918a95287712f6656cfdac5adbfd",
+    "6042bc93d60435b139a4d2cca3b971aeff1314cb78cf80d1f1170278814c394b",
+    "6e5dfdf4e42282dac735a6113cd5144ea9d45b11dcb879d3ba5315e244299f50",
+    "83ce7cd3d07c0114fd5704583fee9ed777cbd34826ea17d70b6ac8fe7158bde2",
+    "cded37d598623ac7f9a913e530c6441f30b17e8ab905f402ec541d0c52e9fead",
+    "ed71d9c20424195d6b274e8e01601dd8e3e53c875e865aade6204edd622397ff"
+  ],
+  "note": "Demo lock over the sample fixture, demonstrating the mechanism. The real Set-1 holdout lock (private corpus) replaces this at corpus pull (Phase 1)."
+}

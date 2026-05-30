@@ -41,7 +41,15 @@ def percentile(values: list, pct: float) -> float:
 
 def macro_f1(predictions: list, golds: list, labels: list) -> float:
     """Macro F1 — unweighted mean of per-label F1. Handles label imbalance
-    (per spec §2 Task A — categories are imbalanced, accuracy alone misleads)."""
+    (per spec §2 Task A — categories are imbalanced, accuracy alone misleads).
+
+    Raises ValueError on length mismatch: a silent zip() truncation here would
+    miscompute the leaderboard's headline number against a subset."""
+    if len(predictions) != len(golds):
+        raise ValueError(
+            f"predictions and golds must be equal length: "
+            f"{len(predictions)} != {len(golds)}"
+        )
     f1s = []
     for label in labels:
         tp = sum(1 for p, g in zip(predictions, golds) if p == label and g == label)
@@ -58,7 +66,16 @@ def macro_f1(predictions: list, golds: list, labels: list) -> float:
 
 
 def accuracy(predictions: list, golds: list) -> float:
-    """Plain accuracy. None predictions count as incorrect."""
+    """Plain accuracy. None predictions count as incorrect.
+
+    Raises ValueError on length mismatch: with unequal lists, zip() truncates
+    to the shorter while the denominator stays len(predictions), silently
+    skewing the reported number."""
+    if len(predictions) != len(golds):
+        raise ValueError(
+            f"predictions and golds must be equal length: "
+            f"{len(predictions)} != {len(golds)}"
+        )
     if not predictions:
         return 0.0
     correct = sum(1 for p, g in zip(predictions, golds) if p == g and p is not None)

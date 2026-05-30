@@ -8,8 +8,11 @@ Cross-vendor judge selection per spec §2 Task B (v0.2 Edit 1):
 
 The verdict format is constrained for stable parsing across judge models:
 three labeled lines (VERDICT / FACTUALITY_A / FACTUALITY_B) followed by a
-1-2 sentence justification. Missing or unparseable lines default to TIE/None
-— the raw output is always preserved on JudgeVerdict for review.
+1-2 sentence justification. A `parse_status` field records whether parsing
+fully succeeded so downstream aggregation can exclude or separately report
+malformed verdicts — a parse failure must NOT be silently counted as a
+genuine TIE (that would bias rankings toward ties for a flaky judge). The
+raw output is always preserved on JudgeVerdict for review.
 
 Bradley-Terry ranking from verdicts is in /eval/bradley_terry.py.
 """
@@ -51,10 +54,16 @@ Where:
 JUDGE_PARAMS = SamplingParams(temperature=0.0, max_tokens=300)
 
 
-# Regex patterns for tolerant parsing — case-insensitive, tolerant of bold/code/whitespace
-VERDICT_RE = re.compile(r"^\s*\*?\*?\s*VERDICT\s*:\s*([A-Za-z]+)", re.IGNORECASE | re.MULTILINE)
-FACTUALITY_A_RE = re.compile(r"^\s*\*?\*?\s*FACTUALITY[_ ]?A\s*:\s*([A-Za-z]+)", re.IGNORECASE | re.MULTILINE)
-FACTUALITY_B_RE = re.compile(r"^\s*\*?\*?\s*FACTUALITY[_ ]?B\s*:\s*([A-Za-z]+)", re.IGNORECASE | re.MULTILINE)
+# Regex patterns for tolerant parsing — case-insensitive, tolerant of markdown
+# emphasis (**bold**, `code`, _italics_) and whitespace anywhere around the
+# label and between the colon and the value, so "**VERDICT:** A" parses.
+_MK = r"[*`_]*"  # optional markdown emphasis run
+VERDICT_RE = re.compile(
+    rf"^\s*{_MK}\s*VERDICT\s*{_MK}\s*:\s*{_MK}\s*([A-Za-z]+)", re.IGNORECASE | re.MULTILINE)
+FACTUALITY_A_RE = re.compile(
+    rf"^\s*{_MK}\s*FACTUALITY[_ ]?A\s*{_MK}\s*:\s*{_MK}\s*([A-Za-z]+)", re.IGNORECASE | re.MULTILINE)
+FACTUALITY_B_RE = re.compile(
+    rf"^\s*{_MK}\s*FACTUALITY[_ ]?B\s*{_MK}\s*:\s*{_MK}\s*([A-Za-z]+)", re.IGNORECASE | re.MULTILINE)
 
 
 def is_anthropic_model(model_id: str) -> bool:
@@ -87,15 +96,25 @@ class JudgeVerdict:
     rationale: str
     judge_id: str
     raw_output: str
+    parse_status: str = "ok"  # see parse_verdict() for the value set
+
+
+# parse_status values, ordered most→least complete.
+PARSE_OK = "ok"                      # verdict + both factuality lines parsed
+PARSE_MISSING_FACTUALITY = "missing_factuality"  # verdict ok, ≥1 factuality missing
+PARSE_MISSING_VERDICT = "missing_verdict"        # verdict missing (winner→TIE fallback)
+PARSE_MALFORMED = "malformed"        # nothing parsed at all
 
 
 def parse_verdict(text: str) -> tuple:
-    """Extract (winner, factuality_a, factuality_b, rationale) from judge output.
+    """Extract (winner, factuality_a, factuality_b, rationale, parse_status).
 
-    All three labeled fields default to TIE/None if unparseable. The full
+    `winner` still falls back to "TIE" when the VERDICT line is absent so
+    existing consumers keep working, but `parse_status` flags that fallback so
+    a flaky judge's unparseable output is NOT scored as a genuine tie. The
     rationale is whatever non-labeled text remains (used for spot-checking).
     """
-    winner = "TIE"
+    winner = None
     factuality_a = None
     factuality_b = None
 
@@ -117,6 +136,21 @@ def parse_verdict(text: str) -> tuple:
         if v in ("pass", "fail"):
             factuality_b = v
 
+    # Classify before applying the TIE fallback.
+    verdict_ok = winner is not None
+    factuality_ok = factuality_a is not None and factuality_b is not None
+    if verdict_ok and factuality_ok:
+        parse_status = PARSE_OK
+    elif verdict_ok:
+        parse_status = PARSE_MISSING_FACTUALITY
+    elif factuality_a is not None or factuality_b is not None:
+        parse_status = PARSE_MISSING_VERDICT
+    else:
+        parse_status = PARSE_MALFORMED
+
+    if winner is None:
+        winner = "TIE"
+
     # Rationale = everything except the three labeled lines
     rationale_lines = []
     for line in text.splitlines():
@@ -130,7 +164,7 @@ def parse_verdict(text: str) -> tuple:
             continue
         rationale_lines.append(stripped)
 
-    return winner, factuality_a, factuality_b, " ".join(rationale_lines)
+    return winner, factuality_a, factuality_b, " ".join(rationale_lines), parse_status
 
 
 def judge_pair(
@@ -143,7 +177,7 @@ def judge_pair(
     via select_judge() — this function is judge-agnostic."""
     prompt = PAIRWISE_PROMPT.format(article=article, summary_a=summary_a, summary_b=summary_b)
     completion = judge.complete(prompt, JUDGE_PARAMS)
-    winner, factuality_a, factuality_b, rationale = parse_verdict(completion.text)
+    winner, factuality_a, factuality_b, rationale, parse_status = parse_verdict(completion.text)
     return JudgeVerdict(
         winner=winner,
         factuality_a=factuality_a,
@@ -151,4 +185,5 @@ def judge_pair(
         rationale=rationale,
         judge_id=judge.model_id,
         raw_output=completion.text,
+        parse_status=parse_status,
     )

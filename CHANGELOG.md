@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-05-29
+
+### Added (held-out lock + runner CLI)
+- **Enforced held-out gate** (`eval/runner.py`). A held-out set now requires `include_held_out=True` (CLI `--include-held-out`, default off) and is verified against a committed SHA-256 lock manifest before scoring; a mutated set is rejected. The final-run header records `held_out` + the verified aggregate hash — turning the methodology's §5 held-out discipline from prose into enforced code. New `scripts/lock_holdout.py` produces the manifest (`data/holdout.sha256`); `data/sample_holdout.jsonl` + `scripts/example_holdout.py` demonstrate gate → verify → tamper-detection end-to-end.
+- **Runner CLI** (`scripts/run_eval.py` → `eval/runner.main()`) — `--task / --dataset / --output / --adapter / --include-held-out`; mock + anthropic + openai + ollama adapters wired. Clean exit (no traceback) on guardrail trips.
+- **GitHub Actions CI** (`.github/workflows/ci.yml`) — unittest matrix (3.9–3.12), example smoke tests, web build, and a guard that the committed held-out lock still matches its fixture.
+
+### Fixed (review-driven correctness pass)
+- **Reproducible fallback item IDs.** The runner used the salted builtin `hash()` for items lacking an `id` — non-deterministic across processes, breaking the reproducibility the project is built on. Now SHA-256 over canonical JSON (`_stable_item_id`).
+- **Resume header validation.** Resuming now refuses to append if the existing header's run identity (model / task / dataset hash / n_samples / held-out) differs — prevents silently mixing two runs in one output file.
+- **Metric length guards.** `accuracy()` and `macro_f1()` silently `zip()`-truncated on unequal-length inputs; they now raise `ValueError` before they can skew a leaderboard number.
+- **Judge parse failures no longer scored as ties.** `parse_verdict()` returns a `parse_status` (`ok` / `missing_factuality` / `missing_verdict` / `malformed`) so a malformed verdict is flagged instead of silently counted as a genuine TIE. Verdict regexes now tolerate markdown emphasis after the colon (`**VERDICT:** A`), matching their documented intent.
+- **Adapter retry docstrings made honest.** `adapters/base.py`, `anthropic.py`, `openai.py` claimed "the runner handles retries"; the runner records an error row and re-attempts on resume. Docstrings now say that. (Runner-level retry/backoff remains a planned follow-up.)
+- **Copy truth pass.** Leaderboard called Task A "multi-label" (it is single-label) and listed "DeepSeek R1 distill 8B" (methodology says DeepSeek V2 Lite) — both corrected. README / methodology / executive-summary held-out claims reworded from "hashed + committed" to describe the now-enforced mechanism. Stale test count refreshed (25 → 47).
+
+### Tests
+- **47 tests** (was 25): added judge verdict parsing (`tests/test_judge.py`), runner reproducibility + held-out gate + resume validation (`tests/test_runner.py`), and metric length-guard cases on `utils.py`.
+
 ## 2026-05-26
 
 ### Fixed (pre-publish review pass)

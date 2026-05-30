@@ -88,6 +88,20 @@ class TestAccuracy(unittest.TestCase):
         """None predictions (parse failures) count as incorrect."""
         self.assertEqual(accuracy([None, "A", "A"], ["A", "A", "A"]), 2 / 3)
 
+    def test_length_mismatch_raises(self):
+        """Unequal lists must raise, not silently zip-truncate the scoreboard."""
+        with self.assertRaises(ValueError):
+            accuracy(["A", "B", "A"], ["A", "B"])
+        with self.assertRaises(ValueError):
+            accuracy(["A"], ["A", "B"])
+
+
+class TestMetricLengthGuards(unittest.TestCase):
+
+    def test_macro_f1_length_mismatch_raises(self):
+        with self.assertRaises(ValueError):
+            macro_f1(["A", "B", "A"], ["A", "B"], ["A", "B"])
+
 
 class TestLoadJsonl(unittest.TestCase):
 

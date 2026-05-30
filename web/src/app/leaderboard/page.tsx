@@ -73,7 +73,7 @@ export default function LeaderboardPage() {
               "Llama 3.1 8B",
               "Qwen 2.5 14B",
               "Qwen 2.5 7B",
-              "DeepSeek R1 distill 8B",
+              "DeepSeek V2 Lite",
             ].map((m) => (
               <tr key={m} className="border-b border-[var(--color-graphite-90)]">
                 <td className="px-3 py-2.5">{m}</td>
@@ -124,7 +124,7 @@ export default function LeaderboardPage() {
           candidate at the throughput Sift needs.
         </li>
         <li>
-          <span className="text-[var(--color-bone)] font-semibold">Task A</span> is multi-label
+          <span className="text-[var(--color-bone)] font-semibold">Task A</span> is single-label
           news categorization. Macro-F1 with bootstrap CI; label noise rate
           computed from a 100-article re-validation pass.
         </li>
