@@ -7,9 +7,11 @@ Production runs MUST pin a dated snapshot in model_name per spec §8 (e.g.,
 'gpt-4o-2024-08-06'). The model_id used in results JSONL is exactly the
 model_name — snapshot pinning lives in what you pass to the constructor.
 
-Single-attempt: a failure surfaces to the runner, which records it as an
-`error` row and re-attempts on the next resume run. Supports the OpenAI `seed`
-parameter (best-effort reproducibility, not guaranteed by OpenAI).
+Single-attempt by contract: no internal retries. The runner retries transient
+failures (network errors, timeouts, 429/5xx) in-process with exponential
+backoff and records a permanent or retry-exhausted failure as an `error` row.
+Supports the OpenAI `seed` parameter (best-effort reproducibility, not
+guaranteed by OpenAI).
 """
 
 import json

@@ -28,9 +28,9 @@ A reproducible eval harness comparing 9 LLMs across 4 real production tasks from
 **Harness skeleton** (Python 3.9+, stdlib only)
 - `adapters/` — model adapter Protocol + concrete impls (Ollama, Anthropic, OpenAI, Mock for testing)
 - `tasks/` — per-task modules (prompt + parser + scorer; categorization + summarization complete)
-- `eval/` — runner (JSONL run units, stable item IDs, resume header validation, **held-out gate**, CLI), judge module with cross-vendor selection + parse-status tracking, Bradley-Terry MM ranking
+- `eval/` — runner (JSONL run units, stable item IDs, resume header validation, **held-out gate**, transient retry/backoff, CLI), judge module with cross-vendor selection + parse-status tracking, Bradley-Terry MM ranking
 - `utils.py` — shared helpers
-- `tests/` — 47 unit tests: BT correctness, macro-F1 with imbalance + length guards, JSONL parsing, judge verdict parsing (malformed ≠ tie), runner reproducibility + held-out gate + tamper detection
+- `tests/` — 58 unit tests: BT correctness, macro-F1 with imbalance + length guards, JSONL parsing, judge verdict parsing (malformed ≠ tie), runner reproducibility + held-out gate + tamper detection + transient-failure retry/backoff classification
 
 **Pre-flight scripts** (`scripts/`, all stdlib-only)
 - `preflight_70b_timing.py` — 70B throughput benchmark on DGX Spark
@@ -52,7 +52,7 @@ python scripts/example_run.py            # Task A end-to-end via MockAdapter
 python scripts/example_task_b.py         # Task B with cross-vendor judging + BT ranking
 python scripts/example_holdout.py        # held-out lock: gate + hash verify + tamper detection
 python scripts/run_eval.py --task A --dataset data/sample_categorization.jsonl --output results/dev.jsonl
-python -m unittest discover tests        # 47 tests
+python -m unittest discover tests        # 58 tests
 ```
 
 For a real run with Ollama + closed-weight APIs, see the pre-flight scripts and the [methodology page](docs/methodology.md).
@@ -70,7 +70,7 @@ Phase 1 in progress. Engineering roughly halfway:
 - [x] Spec v0.2 with cross-judge calibration overlap and adversarial subset
 - [x] Harness skeleton — 2 of 4 task modules (A, B), all 4 adapter types, runner + judge + BT
 - [x] Enforced held-out lock — runner gate (`--include-held-out`) + SHA-256 manifest verification + lock script + tamper-detection tests
-- [x] 47 tests passing (math, judge parsing, runner reproducibility + held-out gate)
+- [x] 58 tests passing (math, judge parsing, runner reproducibility + held-out gate + retry/backoff)
 - [x] GitHub Actions CI — unittest matrix (3.9–3.12), example smoke tests, web build, lock-integrity check
 - [x] Pre-flight scripts (stdlib-only) + runner CLI
 - [x] Annotation rubrics (Set 3 + Set 4 incl. adversarial)

@@ -3,6 +3,10 @@ Ollama adapter — local-model backend via Ollama HTTP API on DGX Spark.
 
 Stdlib-only. Production runs must pin Ollama version + HF SHA per spec §8
 reproducibility checklist.
+
+Single-attempt by contract: no internal retries. The runner retries transient
+failures (network errors, timeouts, 429/5xx) in-process with exponential
+backoff and records a permanent or retry-exhausted failure as an `error` row.
 """
 
 import json
