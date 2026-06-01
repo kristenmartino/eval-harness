@@ -382,7 +382,11 @@ def _build_adapter(args):
         return OpenAIAdapter(_require(args.model_id, "--model-id"))
     if args.adapter == "ollama":
         from adapters.ollama import OllamaAdapter
-        return OllamaAdapter(_require(args.model_id, "--model-id"), _require(args.hf_sha, "--hf-sha"))
+        return OllamaAdapter(
+            _require(args.model_id, "--model-id"),
+            _require(args.hf_sha, "--hf-sha"),
+            host=args.ollama_host,
+        )
     raise ValueError(f"unknown adapter {args.adapter!r}")
 
 
@@ -403,7 +407,7 @@ def _require(value, flag: str):
     return value
 
 
-def main(argv=None) -> int:
+def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="python -m eval.runner",
         description="Run one (adapter, task, dataset) eval into a results JSONL.",
@@ -416,6 +420,10 @@ def main(argv=None) -> int:
     p.add_argument("--model-id", default=None,
                    help="model snapshot id (e.g. claude-sonnet-4-6-20260101)")
     p.add_argument("--hf-sha", default=None, help="HF SHA for ollama model pinning")
+    p.add_argument("--ollama-host", default="http://localhost:11434",
+                   help="base URL of the Ollama server (ollama adapter only; "
+                        "e.g. http://dgx-spark.local:11434 to drive a remote box "
+                        "while the harness runs elsewhere). Ignored by other adapters.")
     p.add_argument("--mock-responses", default=None,
                    help="JSON file mapping prompt-substring -> response (mock adapter)")
     p.add_argument("--n-samples", type=int, default=1)
@@ -429,7 +437,11 @@ def main(argv=None) -> int:
     p.add_argument("--holdout-manifest", default=None, type=Path,
                    help="lock manifest path (default: data/holdout.sha256)")
     p.add_argument("--repo-root", default=None, type=Path)
-    args = p.parse_args(argv)
+    return p
+
+
+def main(argv=None) -> int:
+    args = _build_parser().parse_args(argv)
 
     repo_root = args.repo_root or Path(__file__).resolve().parent.parent
     try:

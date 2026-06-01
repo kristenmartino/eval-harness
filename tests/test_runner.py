@@ -339,5 +339,36 @@ class TestRetry(unittest.TestCase):
             self.assertEqual(s2["skipped_resume"], 0)
 
 
+class TestOllamaHostPlumbing(unittest.TestCase):
+    """The --ollama-host CLI flag must reach the OllamaAdapter so the harness can
+    drive a remote Ollama (e.g. a DGX Spark) from a different machine. Building the
+    adapter touches no network — we only inspect the resolved host."""
+
+    def _parse(self, *extra):
+        # Exercise the real argparse path so we test the actual CLI contract
+        # (incl. the default), not a hand-built Namespace.
+        base = ["--task", "A", "--dataset", "d.jsonl", "--output", "o.jsonl"]
+        return runner._build_parser().parse_args(base + list(extra))
+
+    def test_default_host_is_localhost(self):
+        args = self._parse("--adapter", "ollama")
+        self.assertEqual(args.ollama_host, "http://localhost:11434")
+
+    def test_custom_host_plumbed_into_adapter(self):
+        args = self._parse(
+            "--adapter", "ollama", "--model-id", "llama3.1:8b",
+            "--hf-sha", "abc1234def", "--ollama-host", "http://dgx-spark.local:11434",
+        )
+        adapter = runner._build_adapter(args)
+        self.assertEqual(adapter.host, "http://dgx-spark.local:11434")
+        # model_id is still composed from tag + hf-sha prefix (unchanged behavior).
+        self.assertEqual(adapter.model_id, "llama3.1:8b:abc1234")
+
+    def test_default_host_reaches_adapter_end_to_end(self):
+        # No --ollama-host given → the adapter gets the localhost default.
+        args = self._parse("--adapter", "ollama", "--model-id", "m", "--hf-sha", "deadbeef")
+        self.assertEqual(runner._build_adapter(args).host, "http://localhost:11434")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

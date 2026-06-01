@@ -19,6 +19,14 @@ Examples:
     python scripts/run_eval.py --task A --adapter anthropic \
         --model-id claude-haiku-4-5-20251215 \
         --dataset data/dev/set1.jsonl --output results/haiku_A.jsonl
+
+    # Local open-weight run via Ollama on a REMOTE box (e.g. the DGX Spark
+    # serves the model while the harness runs on your laptop). Omit
+    # --ollama-host to use the default http://localhost:11434.
+    python scripts/run_eval.py --task A --adapter ollama \
+        --model-id llama3.1:8b --hf-sha <hf_sha> \
+        --ollama-host http://dgx-spark.local:11434 \
+        --dataset data/dev/set1.jsonl --output results/llama8b_A.jsonl
 """
 
 import sys
