@@ -17,9 +17,10 @@ supply:
 | **Local model + HF SHA** | Ollama on the DGX: pulled model tag + the weights' HF SHA |
 | **The OK to publish** | The leaderboard row is a public claim — your call |
 
-> Run the harness **on the DGX** so the Ollama adapter's default host
-> (`localhost:11434`) is the local server. The CLI does not yet expose a host
-> override for a remote Ollama.
+> The step-3 commands run the harness **on the DGX**, so the Ollama adapter's
+> default host (`localhost:11434`) is the local server. To run the harness
+> elsewhere (e.g. your laptop) against Ollama on the DGX, add
+> `--ollama-host http://<dgx-host>:11434` to those commands.
 
 ---
 
