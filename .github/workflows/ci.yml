@@ -25,6 +25,7 @@ jobs:
           python scripts/example_run.py
           python scripts/example_task_b.py
           python scripts/example_holdout.py
+          python scripts/example_agent_run.py
       - name: Verify the committed held-out lock still matches its fixture
         run: |
           python scripts/lock_holdout.py --dataset data/sample_holdout.jsonl --out /tmp/relock.sha256
