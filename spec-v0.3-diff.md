@@ -2,7 +2,7 @@
 
 **Source:** `eval-harness-spec-v0.3.md` (v0.3 proposal, drafted 2026-07-09)
 **Status:** Proposed edits, pending Kristen review
-**Applied status (2026-07-09):** **Tier 1, Tier 2, and Tier 3 [A]** edits below are now **applied in place** to `eval-harness-spec-v0.3.md`; their `### Current` blocks quote the pre-edit text and are retained as the change record. **Tier 3 [B]** (six-scorer table, pointwise faithfulness, McNemar/§7a, `pass^k`+N, layered tool-selection, conjunctive injection, dev/test split, replay CI) remains **pending**.
+**Applied status (2026-07-09):** **Tier 1, Tier 2, and Tier 3 [A] + [B]** edits below are all **applied in place** to `eval-harness-spec-v0.3.md`; their `### Current` blocks quote the pre-edit text and are retained as the change record. Only the **Deferred (v0.3.x)** [C] items (critic-quality scorer, fault Phase 2, MCP adapter code, BT CIs, the keyed nightly CI tier) remain unimplemented — by design.
 **Scope:** Interview-critical remediation only — Tier 1 (factual + citation), Tier 2 (scope honesty), Tier 3 [A] quick wins + [B] core methodology. Deferrable [C] items (critic-quality scorer, fault-injection Phase 2, MCP adapter *code*, Bradley–Terry CIs, the keyed nightly CI tier) are listed in **Deferred (v0.3.x)** at the bottom, not edited in.
 
 Each entry shows current text, a proposed replacement, and a one-line **Why** tied to a gap number (G1–G14) and its real-world anchor. Gaps were surfaced by a 4-lens review + a per-gap best-in-class research pass, each fit-checked against the repo's stdlib-only / single-IC / fixed-model constraints.
