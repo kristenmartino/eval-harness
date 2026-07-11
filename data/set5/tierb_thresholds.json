@@ -1,0 +1,7 @@
+{
+  "must_pass": {
+    "correct_rate": 1.0,
+    "mean_recall": 0.8
+  },
+  "note": "Tier-B judged nightly (spec \u00a76). Needs a live judge; CI runs the key-free KeywordJudge smoke, the real nightly a cross-vendor LLM."
+}
