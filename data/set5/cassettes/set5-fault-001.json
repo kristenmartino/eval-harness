@@ -1,0 +1,7 @@
+{
+  "87d8cc9014292829ea1aea0b6b3a5bc0740f5862c4230a465ae56b7fc55f8294": "ROUTE: retrieve\nQUERY: Vogtle capacity",
+  "444e449ed32e70d7eee7a9ea184f25483ccf256f269beb3814a6bcc9e965d524": "TOOL: vector_search\nARGS: {\"query\": \"Vogtle planned capacity\"}",
+  "05911b5405c9c5555794cc544b7090a39ef25e0cac7bd60d1590aaba4077eb6c": "TOOL: none",
+  "bea0b671238a476ac7494f01da77100ec7da75ec068f3537412c2226fcec8712": "ANSWER: The Vogtle plant's planned capacity is 2200 MW.\nCITATIONS: sift://energy/vogtle-capacity#0",
+  "eea648fd94eb2b153cacb754cf23b97f91240eeb5d94889a8c453024c998f98a": "VERDICT: pass"
+}

@@ -1,0 +1,55 @@
+{
+  "schema": "registry-lock/v1",
+  "version": "1.0.0",
+  "registry_sha256": "4da320a8eef86979f366c21600d3c178b23b98404eedfeaae7d9a1ddc2a31844",
+  "tools": [
+    {
+      "name": "fetch_article",
+      "description": "Fetch a single article's full body by stable id.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      }
+    },
+    {
+      "name": "list_by_category",
+      "description": "List article ids in a category.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category"
+        ]
+      }
+    },
+    {
+      "name": "vector_search",
+      "description": "Semantic search over the article corpus; returns ranked hits.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string"
+          },
+          "k": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      }
+    }
+  ]
+}

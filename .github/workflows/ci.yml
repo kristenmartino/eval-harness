@@ -36,6 +36,10 @@ jobs:
           assert a == b, f"holdout.sha256 is stale: committed {a} != recomputed {b}"
           print("held-out lock matches fixture:", a)
           PY
+      - name: Tier-A trajectory regression gate (replay golden cassettes, key-free)
+        run: python scripts/ci_trajectory_gate.py
+      - name: Verify the tool-registry schema lock (baseline still valid)
+        run: python scripts/lock_registry.py
 
   web-build:
     name: web build
