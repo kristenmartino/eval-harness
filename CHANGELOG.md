@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-07-11
+
+### Added (v0.3 Tier-B judged nightly scaffold — spec §6, key-free smoke + keyed nightly)
+- **`eval/tierb.py` — the judged-dimension path.** The pointwise-judge scorers the key-free Tier-A gate can't compute — **answer-correctness** (vital-weighted nugget recall + precision → F1) and **citation faithfulness** — run here. `run_tierb` **replays the same committed golden cassettes** as Tier A (so the agent trajectory is deterministic and never re-invokes a live model, §3 invariant), then drives ONLY the judge over each scenario's authored nuggets/claims. Reports a per-scenario + aggregate scorecard with a **seeded bootstrap CI on mean recall** (wide at this n, reported honestly). Gates on `tierb_thresholds.json`.
+- **`adapters/keyword_judge.py` — `KeywordJudge`.** A deterministic, key-free pointwise judge (implements the adapter interface; parses CONTEXT/STATEMENT from the pointwise prompt, labels support/partial/not_support by content-word overlap). NOT a real judge — a stand-in so the Tier-B path is **exercised and testable without API keys**. The real nightly swaps a cross-vendor LLM judge in behind the same interface.
+- **`scripts/tierb_nightly.py`** — the keyed nightly CLI (`--judge keyword|anthropic|openai|ollama`; keyword is a key-free dry run). Documents that the real nightly should route the judge cross-vendor (§7) once the model axis lands. **`scripts/example_tierb.py`** — the key-free smoke (KeywordJudge over the golden), wired into CI.
+- **Golden extension** (`scripts/build_golden.py`, `data/set5/`): each scenario's rubric now carries authored `nuggets` (vital/okay) + `claims`, and `reference_context` is computed from the cited article bodies; a `tierb_thresholds.json` is emitted. Cassettes unchanged (byte-identical) — only rubric data grew, so the Tier-A gate is unaffected.
+- **Tests**: **165 tests** (was 156) — `tests/test_tierb.py`: KeywordJudge labels (support/partial/not_support/deterministic), `run_tierb` passes on the golden, **the path discriminates** (a stricter judge → recall 0 → correct_rate 0 → gate fails, so it isn't vacuously green), CI reporting, and aggregation.
+- With this, the **§6 two-tier CI design is complete in code**: Tier A (per-PR, key-free, deterministic — shipped) and Tier B (nightly, judged — scaffolded key-free, keyed run ready). Remaining v0.3 work is genuinely corpus-gated (step 7).
+
 ## 2026-07-10
 
 ### Added (v0.3 Tier-A CI gate + cassette replay — spec §9 step 6, key-free)
