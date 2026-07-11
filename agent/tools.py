@@ -145,7 +145,17 @@ class ToolRegistry:
         errors = validate_args(tool.input_schema, args)
         if errors:
             raise ToolValidationError(f"{name}: " + "; ".join(errors))
-        return tool.handler(args)
+        try:
+            return tool.handler(args)
+        except (ToolError, ToolValidationError):
+            raise
+        except Exception as e:
+            # A real tool's raw stdlib fault (socket.timeout, urllib HTTPError,
+            # JSONDecodeError, ...) surfaces at this seam as a ToolError, so the
+            # loop's error-recovery (spec §5b) handles diverse faults uniformly.
+            # The underlying type stays visible in the message for the Phase-2
+            # shape-fidelity conformance test.
+            raise ToolError(f"{type(e).__name__}: {e}") from e
 
     def schemas(self) -> list:
         """MCP `tools/list`-shaped view: name / description / inputSchema, sorted

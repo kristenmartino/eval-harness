@@ -107,6 +107,18 @@ class TestRegistryCall(unittest.TestCase):
         with self.assertRaises(ToolError):
             reg.call("x", {})
 
+    def test_raw_stdlib_fault_wraps_as_toolerror(self):
+        """A raw stdlib exception (e.g. a real tool's TimeoutError) surfaces at
+        the seam as ToolError, with the underlying type visible in the message —
+        so the loop recovers uniformly and Phase 2 can check shape-fidelity."""
+        def boom(args):
+            raise TimeoutError("read timed out")
+        reg = ToolRegistry([Tool("x", "d", {"type": "object", "properties": {}},
+                                 handler=boom)])
+        with self.assertRaises(ToolError) as ctx:
+            reg.call("x", {})
+        self.assertIn("TimeoutError", str(ctx.exception))
+
 
 class TestMockCorpusTools(unittest.TestCase):
 
