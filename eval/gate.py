@@ -18,8 +18,7 @@ from pathlib import Path
 
 from adapters.replay import ReplayAdapter, ReplayMiss
 from agent.loop import run_agent
-from agent.tools import build_mock_registry
-from eval.adversarial import score_injection, with_injected_fault
+from eval.adversarial import build_scenario_registry, score_injection
 from eval.trajectory import run_unit, score_trajectory
 
 
@@ -57,12 +56,8 @@ def run_gate(golden_dir) -> GateResult:
     replay_misses = []
 
     for sc in scenarios:
-        registry = build_mock_registry()
+        registry = build_scenario_registry(sc)
         trh = registry.registry_hash()
-        if "fault" in sc:
-            fspec = sc["fault"]
-            registry = with_injected_fault(registry, fspec["tool"], fspec["fault"],
-                                           fspec.get("fail_times"))
         cassette = json.loads((golden_dir / sc["cassette"]).read_text())
         adapter = ReplayAdapter(cassette, sc["model_id"], tool_registry_hash=trh)
 

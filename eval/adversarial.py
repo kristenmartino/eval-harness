@@ -24,7 +24,28 @@ import re
 import socket
 import urllib.error
 
-from agent.tools import Tool, ToolRegistry
+from agent.tools import DEMO_CORPUS, Tool, ToolRegistry, build_mock_registry
+
+
+def build_scenario_registry(scenario):
+    """Build the shared fixture tools, including document payloads and faults.
+
+    Document injections modify retrieved text; defining an attacker goal alone
+    does not expose an agent to an attack.
+    """
+    corpus = [dict(article) for article in DEMO_CORPUS]
+    injection = scenario.get("document_injection")
+    if injection:
+        matches = [a for a in corpus if a["id"] == injection["article_id"]]
+        if not matches or not injection["text"].strip():
+            raise ValueError("document injection needs an existing article and nonempty payload")
+        matches[0]["body"] += "\n" + injection["text"]
+    registry = build_mock_registry(corpus)
+    if "fault" in scenario:
+        fault = scenario["fault"]
+        registry = with_injected_fault(registry, fault["tool"], fault["fault"],
+                                       fault.get("fail_times"))
+    return registry
 
 
 class CanaryNotPlanted(RuntimeError):

@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-10-24
+
+### Fixed
+
+- Pass retrieved source text to agent synthesis and critique; retain cited evidence in trajectory JSONL. Preserve multiline answers for downstream scoring.
+- Score generated answer sentences/clauses against reference context. Resolve citation faithfulness against retrieved spans actually cited. Missing or unresolved citations fail the strict outcome gate.
+- Keep partial support in the denominator with half credit; partial support, empty answers/context, and an empty judged scenario set cannot establish a passing outcome.
+- Plant the adversarial fixture payload in retrieved document text. Mark fixture provenance as scripted and regenerate request cassettes for the changed prompts. Scripted results do not establish live-model reliability.
+- Rewrite site copy, metadata, README, and current methodology/summary to distinguish implemented tools from pending corpus evaluation. Narrow held-out and judge-bias claims; replace the empty ranking table with results status.
+- Fix mobile navigation overflow and MDX table rendering. Keep route metadata in server page components; use installed font files and Next's native ESLint configuration.
+
+### Validation
+
+- 185 unit/regression tests pass (20 added), along with Tier A, the keyword Tier-B smoke, and the registry lock.
+- Web production build and lint pass. All four routes checked at 375px; homepage and methodology also checked at desktop width.
+- Live model evaluation and production-corpus rankings remain pending.
+
 ## 2026-07-11
 
 ### Added (v0.3 Tier-B judged nightly scaffold — spec §6, key-free smoke + keyed nightly)

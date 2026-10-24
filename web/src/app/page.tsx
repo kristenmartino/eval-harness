@@ -4,7 +4,7 @@ export default function HomePage() {
   return (
     <div className="mx-auto max-w-6xl px-6 md:px-10 py-20 md:py-32">
       <div className="mb-6 font-mono text-[var(--text-caption)] tracking-[var(--tracking-mono)] uppercase text-[var(--color-signal-blue-soft)]">
-        Pre-execution scoping &middot; Phase 1 in progress
+        Harness implemented &middot; Production evaluation pending
       </div>
 
       <h1
@@ -15,20 +15,19 @@ export default function HomePage() {
           lineHeight: "var(--leading-display)",
         }}
       >
-        Open-weight vs frontier LLMs, evaluated on a real production workload.
+        Compare models on Sift&apos;s news-processing tasks.
       </h1>
 
       <p className="text-lg md:text-xl leading-relaxed text-[var(--color-graphite-20)] max-w-3xl mb-6">
-        A defensible cost/quality leaderboard comparing 5 open-weight models
-        (Llama, Qwen, DeepSeek &mdash; on a local DGX Spark via Ollama) against
-        4 frontier APIs (Anthropic + OpenAI) on Sift&apos;s production news
-        pipeline.
+        A Python evaluation harness with categorization and summarization tasks,
+        model adapters, and scripted agent regression tests. Built to support
+        a future comparison of local models and API models for Sift.
       </p>
 
       <p className="text-base md:text-lg leading-relaxed text-[var(--color-graphite-40)] max-w-3xl mb-12">
-        Four tasks. Held-out discipline that&apos;s verifiable from the
-        commit history. Cross-vendor judging to control for self-preference
-        bias. Hardware-amortized cost methodology.
+        The production corpus has not been evaluated. The repository contains
+        runnable examples and tests; model rankings, cost measurements, and
+        routing recommendations are pending.
       </p>
 
       <div className="flex flex-wrap gap-4 mb-20">
@@ -48,19 +47,19 @@ export default function HomePage() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-[var(--color-graphite-90)] border border-[var(--color-graphite-90)] max-w-5xl">
         <FeatureCell
-          label="Methodology"
-          value="Cross-vendor judging"
-          detail="Sonnet 4.6 judges non-Anthropic pairs; GPT-4o judges Anthropic pairs. 50-pair calibration overlap with Cohen's κ ≥ 0.6 floor."
+          label="Task evaluation"
+          value="Categorization + summaries"
+          detail="Task modules, JSONL runs, categorization metrics, and pairwise summary judging are implemented. Extraction and the Task D benchmark are planned."
         />
         <FeatureCell
-          label="Reproducibility"
-          value="Verifiable held-out"
-          detail="20% held-out set SHA-256 hashed pre-iteration. Hash committed to git before any prompt tuning. Anyone can verify the bound wasn't crossed."
+          label="Agent regression tests"
+          value="Three scripted scenarios"
+          detail="Replay fixtures exercise retrieval, a transient tool failure, and a document injection. They test the harness; they do not measure a live model's reliability."
         />
         <FeatureCell
-          label="Cost model"
-          value="Hardware-amortized"
-          detail="Real DGX Spark capex + Florida kWh + utilization vs. published API rates. Dual-view: individual developer cost vs. fully-loaded production cost."
+          label="Study status"
+          value="Real-data runs pending"
+          detail="The comparison still needs corpus collection, annotations, judge calibration, hardware timing, and measured costs. No model rankings are published."
         />
       </div>
 
@@ -82,18 +81,17 @@ export default function HomePage() {
             >
               Methodology
             </Link>
-            &nbsp;&mdash; full study design, scoring, statistical treatment,
-            and cost model. The substantive page.
+            &nbsp;&mdash; implemented scoring, study design, and limitations.
           </li>
           <li>
             <Link
               href="/leaderboard"
               className="text-[var(--color-signal-blue-soft)] underline underline-offset-4 decoration-[var(--color-graphite-80)] hover:decoration-[var(--color-signal-blue)]"
             >
-              Leaderboard
+              Results status
             </Link>
-            &nbsp;&mdash; results land at the end of Phase 1. Placeholder for
-            now with the planned shape.
+            &nbsp;&mdash; current results status and the measurements needed
+            before publishing a comparison.
           </li>
           <li>
             <Link
@@ -102,7 +100,7 @@ export default function HomePage() {
             >
               Executive summary
             </Link>
-            &nbsp;&mdash; one-pager for hiring managers and senior reviewers.
+            &nbsp;&mdash; what is built and what remains to run.
           </li>
         </ul>
       </div>

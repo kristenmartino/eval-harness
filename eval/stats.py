@@ -1,20 +1,9 @@
-"""
-eval/stats.py — the shared stats + pointwise-judge module (spec §7, premortem #11).
+"""Statistical helpers and pointwise support scoring.
 
-Centralizes the three primitives the trajectory scorers "reuse", so the reuse
-claims are real rather than a macro_f1-only bootstrap + a pairwise-only judge
-(what actually shipped in v0.2):
-  (a) seeded_bootstrap_ci / paired_delta_ci — a generic seeded-percentile
-      bootstrap over an ARBITRARY statistic (the reusable *pattern* from
-      eval/metrics, not the macro_f1-specific function).
-  (b) cohens_kappa / mcnemar_exact — inter-rater agreement + the paired
-      version-comparison test (§7a). Neither is in the v0.2 code; both built here.
-  (c) pointwise_label — a POINTWISE judge mode (support/partial/not_support) on
-      the existing adapter + cross-vendor routing; the shipped judge is pairwise.
-
-Pointwise scorers built on (c): answer-correctness (vital-weighted nugget recall
-+ factual precision → F1) and citation faithfulness. malformed → not_support
-(conservative abstain), mirroring the v0.2 malformed≠tie discipline.
+Includes seeded bootstrap intervals, paired deltas, agreement tests, nugget
+recall, and support checks for generated answer units. A caller supplies the
+judge adapter; this module does not choose or calibrate judges. Malformed
+judgments receive zero support credit.
 """
 
 import math
@@ -39,8 +28,8 @@ def seeded_bootstrap_ci(values, statistic=None, *, n_boot=1000, seed=1234,
                         lo=2.5, hi=97.5):
     """Percentile bootstrap CI for `statistic` (default: mean) over `values`,
     seeded for reproducibility. Reuses utils.percentile — the same primitive the
-    Task-A bootstrap uses — generalized to any statistic. Wide at small n by
-    design (report it honestly, per §9)."""
+    Task-A bootstrap uses — generalized to any statistic. At small n, intervals
+    can be degenerate and should not be treated as reliability guarantees."""
     statistic = statistic or _mean
     n = len(values)
     if n == 0:
@@ -195,12 +184,15 @@ def nugget_recall(judge, answer: str, nuggets) -> dict:
 
 
 def citation_faithfulness(judge, claims, cited_context: str) -> dict:
-    """supported / (supported + not_support) over the answer's claims against the
-    cited spans (spec §4). Irrelevant/partial handled; malformed → not_support."""
+    """Mean support credit over ALL claims: full=1, partial=0.5, unsupported=0.
+
+    Missing claims or context score zero. Callers must supply claims from the
+    generated answer and the text of the sources actually cited.
+    """
     supported, not_supported, partial = 0, 0, 0
     per = []
     for claim in claims:
-        label = pointwise_label(judge, claim, cited_context)
+        label = pointwise_label(judge, claim, cited_context) if cited_context.strip() else "not_support"
         if label == "support":
             supported += 1
         elif label == "partial":
@@ -208,8 +200,8 @@ def citation_faithfulness(judge, claims, cited_context: str) -> dict:
         else:
             not_supported += 1
         per.append({"claim": claim, "label": label})
-    denom = supported + not_supported
-    faithfulness = (supported / denom) if denom else 1.0
+    denom = supported + partial + not_supported
+    faithfulness = ((supported + 0.5 * partial) / denom) if denom else 0.0
     return {
         "faithfulness": round(faithfulness, 4),
         "supported": supported,
@@ -219,27 +211,37 @@ def citation_faithfulness(judge, claims, cited_context: str) -> dict:
     }
 
 
-def answer_correctness(judge, answer: str, nuggets, claims=None,
+def answer_claims(answer: str) -> list:
+    """Conservative sentence/clause units from the actual answer, without filtering.
+
+    This is deterministic segmentation, not atomic factual-claim extraction.
+    The judge must support the entire unit, including any compound assertion.
+    """
+    return [s.strip() for s in re.split(r"(?<=[.!?;])\s+|\n+", answer or "") if s.strip()]
+
+
+def answer_correctness(judge, answer: str, nuggets,
                        reference_context: str = None) -> dict:
-    """Outcome score: F1 of nugget recall (primary) and factual precision
-    (secondary fabrication guard). Precision needs the answer's claims judged
-    against the reference; if `claims` is None, F1 = recall (precision deferred).
-    Binary correct-outcome gate := vital-recall == 1.0 AND no unsupported claim
-    (spec §4) — this is what efficiency-gating and the §6 gate consume."""
+    """F1 of nugget recall and support of the generated answer's claim units.
+
+    Reference context is required for precision and a passing correctness gate.
+    Recall alone remains reportable but cannot establish factual correctness.
+    Partial support receives half credit and fails the strict correctness gate.
+    """
+    claims = answer_claims(answer)
     rec = nugget_recall(judge, answer, nuggets)
     recall = rec["recall"]
-    if claims is None:
+    if reference_context is None:
         precision = None
         f1 = recall
         prec_block = None
     else:
-        ref = reference_context if reference_context is not None else \
-            " ".join(n["text"] for n in nuggets)
-        prec_block = citation_faithfulness(judge, claims, ref)
+        prec_block = citation_faithfulness(judge, claims, reference_context)
         precision = prec_block["faithfulness"]
         f1 = (2 * precision * recall / (precision + recall)) if (precision + recall) else 0.0
-    no_unsupported = (claims is None) or (prec_block["not_supported"] == 0)
-    gate = (rec["vital_recall"] == 1.0) and no_unsupported
+    fully_supported = bool(claims) and prec_block is not None and \
+        prec_block["not_supported"] == 0 and prec_block["partial"] == 0
+    gate = (rec["vital_recall"] == 1.0) and fully_supported
     return {
         "recall": recall,
         "vital_recall": rec["vital_recall"],
@@ -248,4 +250,5 @@ def answer_correctness(judge, answer: str, nuggets, claims=None,
         "correct": gate,
         "nuggets": rec["per_nugget"],
         "precision_detail": prec_block,
+        "claims": claims,
     }

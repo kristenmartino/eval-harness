@@ -18,7 +18,7 @@ What the harness already provides vs. what only **you** can supply:
 | `ToolRegistry` Protocol (`agent/tools.py`) — swap mock → real | **Sift stable article-ID format** (Prerequisite-0) |
 | Agent loop (`agent/loop.py`), trajectory writer + deterministic scorers (`eval/trajectory.py`) | **Real corpus** — articles `{id, category, title, body}` from your Sift pull |
 | Adversarial harness + locks (`eval/adversarial.py`, `lock_adversarial.py`) | **A real vector store** behind the Protocol (a stated dep — see step 2) |
-| Tier-A gate + cassette replay (`eval/gate.py`, `adapters/replay.py`) | **Set 4 authored** — n=50 main + n=20 adversarial, with gold ids + reference answers + nuggets/claims + attacker goals |
+| Tier-A gate + cassette replay (`eval/gate.py`, `adapters/replay.py`) | **Set 4 authored** — n=50 main + n=20 adversarial, with gold ids + reference answers + nuggets + reference context + attacker goals |
 | Tier-B judged path + `KeywordJudge` (`eval/tierb.py`) — swap → real cross-vendor judge | **A real model backbone** (Ollama on DGX / API) + **judge keys** |
 | Stats: `pass^k`, McNemar, paired bootstrap, kappa (`eval/stats.py`) | **The OK to publish** |
 
@@ -68,7 +68,8 @@ write **n=50 main + n=20 adversarial** scenarios. Each carries:
 
 - `question`, `gold_article_ids` (real ids), and a reference answer;
 - a **rubric**: `allowed_tools`, `required_tools`, `precedence` edges, `step_budget`;
-- **`nuggets`** (vital/okay) + **`claims`** + `reference_context` — the Tier-B judged inputs;
+- **`nuggets`** (vital/okay) + `reference_context` — the Tier-B reference inputs;
+  answer sentences/clauses are derived from the generated answer, never a static rubric claim list;
 - for adversarial scenarios, an **`attacker_goal`** `{injected_tool,
   injected_arg_pattern, planted_canary, target_assertion}` and the injected
   document.
@@ -86,7 +87,8 @@ git add data/set5/*.sha256 && git commit -m "lock Set-4 adversarial + TEST-30 ma
 ```
 
 Locks the **hashes, not the data** (§5, premortem #5). Default/CI runs then read
-only DEV-20; tuning can't leak into the reported set.
+only DEV-20 by convention. Hashes detect dataset edits; they do not prevent
+reading the held-out files outside the runner or prove that no tuning used them.
 
 ## 5. Wire the real model into the loop, iterate on DEV-20 only
 
@@ -110,7 +112,8 @@ Adapt `scripts/build_golden.py` to record against `RecordingAdapter(OllamaAdapte
 and your `SiftToolRegistry`, then commit the cassettes + `registry.sha256`.
 Now the **per-PR Tier-A gate replays real trajectories, key-free** — and any later
 prompt/schema edit trips a `ReplayMiss` until you deliberately re-record
-(`build_golden.py`), so a prompt regression can't land silently.
+(`build_golden.py`). Review the regenerated responses; a new request key alone
+does not establish that a changed prompt preserves live-model quality.
 
 ## 7. Run the live eval
 
@@ -145,12 +148,13 @@ deliberately.
 - **`pass^k` needs temp > 0** with committed N; at temp=0 with pinned seeds every trial is identical and the reliability metric measures nothing.
 - **Cross-vendor judge** — never let a Claude agent be graded solely by a Claude judge (§7); and judge-vs-judge agreement is not validity — calibrate against a small human-gold subset before trusting the faithfulness number.
 - **Tool-schema changes re-baseline, loudly** — a `registry_hash` move fails `lock_registry` until reviewed + re-recorded; it never silently passes.
-- **Tier A is per-PR + key-free; Tier B is keyed + nightly** — the gate you run on every change cannot see live-model drift or §5a injection *susceptibility*; those are "as fresh as the last re-record." Don't oversell the green badge.
+- **Tier A runs per PR; Tier B has a judged CLI scaffold** — the gate you run on every change cannot see live-model drift or §5a injection *susceptibility*; the committed cassettes are scripted. Configure a live-model evaluation separately;
+  a live judge over scripted answers still does not measure agent reliability.
 - **Every score is recomputable from the trajectory JSONL** — re-scoring never re-invokes the model (§3 invariant).
 
 ## Smoke test (plumbing only — no corpus, no model, no keys)
 
-The whole chain already runs green on the committed mock golden, proving the
+The chain runs on the committed scripted fixtures, exercising the
 seams before you plug in real data/model:
 
 ```bash

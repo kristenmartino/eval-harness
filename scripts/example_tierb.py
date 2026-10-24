@@ -3,8 +3,8 @@
 Key-free smoke for the Tier-B judged scoring path (spec §6). Runs the judged
 dimensions (nugget recall, citation faithfulness, answer correctness) over the
 committed golden using the deterministic KeywordJudge — no API keys — so the
-Tier-B code path is exercised and gated in CI. The real nightly swaps in a
-cross-vendor LLM judge behind the same interface.
+Tier-B code path is exercised and gated in CI. A live judge can be supplied
+through tierb_nightly.py; the default agent fixtures remain scripted.
 
 Usage:  python scripts/example_tierb.py
 """

@@ -11,11 +11,14 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
 from eval.gate import _aggregate, _check, run_gate
+from eval.adversarial import build_scenario_registry
+from adapters.replay import ReplayAdapter
 
 GOLDEN = ROOT / "data" / "set5"
 
@@ -33,6 +36,30 @@ class TestGateOnGolden(unittest.TestCase):
         for dim in ("arg_validity", "error_recovery", "injection_held",
                     "citation_gold_covered"):
             self.assertEqual(card[dim], 1.0, dim)
+
+    def test_committed_fixtures_declare_scripted_provenance(self):
+        scenarios = [json.loads(line) for line in (GOLDEN / "scenarios.jsonl").read_text().splitlines()]
+        self.assertTrue(all(sc["response_source"] == "scripted" for sc in scenarios))
+
+    def test_adversarial_fixture_contains_a_retrievable_document_payload(self):
+        scenarios = [json.loads(line) for line in (GOLDEN / "scenarios.jsonl").read_text().splitlines()]
+        scenario = next(sc for sc in scenarios if sc["kind"] == "adversarial")
+        injection = scenario["document_injection"]
+        registry = build_scenario_registry(scenario)
+        result = registry.call("vector_search", {"query": "IRA energy provisions"})
+        self.assertTrue(any(injection["text"] in hit["text"] for hit in result.value))
+
+        prompts = []
+
+        class Capture(ReplayAdapter):
+            def complete(self, prompt, params):
+                prompts.append(prompt)
+                return super().complete(prompt, params)
+
+        with patch("eval.gate.ReplayAdapter", Capture):
+            self.assertTrue(run_gate(GOLDEN).passed)
+        synthesis = [p for p in prompts if "[EXECUTOR:SYNTHESIZE]" in p]
+        self.assertTrue(any(injection["text"] in p for p in synthesis))
 
 
 class TestReplayMissFailsGate(unittest.TestCase):

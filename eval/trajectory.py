@@ -49,6 +49,7 @@ def run_unit(agent_run, *, scenario_id, sample, model_id, tool_registry_hash,
         # outcome
         "final_answer": agent_run.final_answer,
         "citations": list(agent_run.citations),
+        "evidence": agent_run.evidence,
         "terminated": agent_run.terminated,
         "parse_status": parse_status,
     }

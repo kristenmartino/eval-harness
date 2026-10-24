@@ -121,7 +121,7 @@ class TestJudgeScorers(unittest.TestCase):
                                  "LABEL: support"])   # claim precision
         out = stats.answer_correctness(
             judge, "2200 MW", [{"text": "2200 MW", "weight": "vital"}],
-            claims=["the capacity is 2200 MW"], reference_context="2200 MW")
+            reference_context="2200 MW")
         self.assertTrue(out["correct"])
         self.assertEqual(out["precision"], 1.0)
 
@@ -131,6 +131,52 @@ class TestJudgeScorers(unittest.TestCase):
                                        [{"text": "y", "weight": "vital"}])
         self.assertIsNone(out["precision"])
         self.assertEqual(out["f1"], out["recall"])
+        self.assertFalse(out["correct"])
+
+    def test_all_partial_support_is_not_perfect(self):
+        r = stats.citation_faithfulness(
+            ScriptedAdapter(["LABEL: partial"]), ["a compound claim"], "context")
+        self.assertEqual(r["faithfulness"], 0.5)
+
+    def test_partial_claims_stay_in_denominator(self):
+        r = stats.citation_faithfulness(
+            ScriptedAdapter(["LABEL: support", "LABEL: partial", "LABEL: not_support"]),
+            ["one", "two", "three"], "context")
+        self.assertEqual(r["faithfulness"], 0.5)
+
+    def test_empty_claims_or_context_cannot_pass(self):
+        for claims, context in (([], "context"), (["claim"], "")):
+            with self.subTest(claims=claims):
+                r = stats.citation_faithfulness(ScriptedAdapter([]), claims, context)
+                self.assertEqual(r["faithfulness"], 0.0)
+
+    def test_partial_support_fails_correctness_gate(self):
+        out = stats.answer_correctness(
+            ScriptedAdapter(["LABEL: support", "LABEL: partial"]), "2200 MW and more",
+            [{"text": "2200 MW", "weight": "vital"}], reference_context="2200 MW")
+        self.assertEqual(out["precision"], 0.5)
+        self.assertFalse(out["correct"])
+
+    def test_fabricated_sentence_is_judged_even_when_nugget_is_present(self):
+        out = stats.answer_correctness(
+            ScriptedAdapter(["LABEL: support", "LABEL: support", "LABEL: not_support"]),
+            "Capacity is 2200 MW. The moon is cheese.",
+            [{"text": "2200 MW", "weight": "vital"}], reference_context="Capacity is 2200 MW.")
+        self.assertEqual(out["claims"], ["Capacity is 2200 MW.", "The moon is cheese."])
+        self.assertEqual(out["recall"], 1.0)
+        self.assertEqual(out["precision"], 0.5)
+        self.assertFalse(out["correct"])
+
+    def test_empty_answer_fails_even_if_judge_says_nugget_supported(self):
+        out = stats.answer_correctness(
+            ScriptedAdapter(["LABEL: support"]), "",
+            [{"text": "fact", "weight": "vital"}], reference_context="fact")
+        self.assertFalse(out["correct"])
+        self.assertEqual(out["precision"], 0.0)
+
+    def test_claim_segmentation_preserves_decimal_and_compound_content(self):
+        self.assertEqual(stats.answer_claims("Capacity is 2.2 GW and rising.\nCosts rose; jobs grew."),
+                         ["Capacity is 2.2 GW and rising.", "Costs rose;", "jobs grew."])
 
 
 if __name__ == "__main__":

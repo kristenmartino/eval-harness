@@ -1,6 +1,8 @@
 # Eval Harness — Spec v0.3: Agentic Trajectory Evaluation
 
-**Status:** Proposal / design layer. Phase 2 track. Extends v0.2; does **not** replace it.
+**Status:** Design document with a scripted implementation. The production-corpus evaluation remains pending.
+
+**Implementation update (2026-10-24):** The scoring contract below now reflects generated-answer scoring, retrieved citation text, and partial-support penalties. The committed cassettes are handwritten scripted fixtures, not recorded live-model evidence. Other proposed calibration and live-evaluation work remains pending.
 **Relationship to v0.2:** v0.2 (open-weight vs frontier benchmark) stays the standalone, shippable thesis. v0.3 is a distinct track that *reuses v0.2's substrate* to evaluate a single-model, multi-role agent loop (router/planner/executor/critic). Ship v0.2's leaderboard first; v0.3 is the layer that turns "trace/observe agent runs" from a claim into a demo.
 
 ---
@@ -87,14 +89,14 @@ Six scorers — outcome and process on separate axes. The deterministic ones are
 
 | Scorer | Type | What it measures |
 |---|---|---|
-| **Answer correctness (outcome)** | pointwise judge + deterministic key | Vital-weighted **nugget recall** (primary) + factual **precision** → F1, against 2–6 pre-authored atomic nuggets per reference (labeled vital/okay). Recall via the new pointwise judge (support/partial/not_support); precision decomposes the answer into claims — the non-deterministic half, mitigated by a pinned-judge snapshot + N samples. Plus a **free deterministic** check: `citations[]` ⊇ gold article ID(s). *Method: RAGAS FactualCorrectness + TREC AutoNuggetizer, reimplemented in stdlib.* |
+| **Answer correctness (outcome)** | pointwise judge + deterministic segmentation | Vital-weighted nugget recall plus precision against reference context, reported as F1. Precision scores sentence/clause units from the actual generated answer, without substituting authored rubric claims. Segmentation is deterministic, not atomic factual-claim extraction; the judge must support every assertion in each unit. |
 | **Tool-selection (layered)** | 4 deterministic sub-scores + 1 judge row | **Legality** (called ∈ `allowed_tools`; hard gate → 0), **coverage** (⊇ `required_tools`), **precedence** (fraction of `before→after` edges satisfied — a *partial order*; critical edges e.g. answer-before-retrieval as hard gates), **state-legality** (each action legal for its state). `process = legality × mean(coverage, precedence, state-legality)`. Order/state are frozen into ~3–5 reusable trajectory *templates* at authoring time, so runtime scoring is a pure function. A separate, explicitly-labeled **"Trajectory appropriateness" (LLM-judge)** row scores only the subjective residue. *A flat expected-tool set could never carry the order requirement (agentevals / τ-bench).* |
 | **Arg schema-validity** | deterministic | Are tool args well-formed against the tool's schema? (JD's "clean tool schemas / structured outputs.") |
 | **Step efficiency** | deterministic, **report-only** | Step count vs. a per-scenario budget, conditioned on a correct outcome, **with the denominator printed inline** ("0.82 over n=41 correct/50"). Report-only — never feeds the gate or another threshold (§6, premortem #2). |
 | **Error recovery** | deterministic (+1 optional judge dim) | Under an injected fault (§5b): detect / classify transient-vs-permanent / retry-with-backoff honoring `Retry-After` / verify-state + a duplicate-side-effect counter — all deterministic from the JSONL. The "communicate residual uncertainty without fabricating" dimension is judge-mediated or deferred. |
-| **Citation faithfulness** | **pointwise** LLM-judge | `supported/(supported+not_supported)` over decomposed claims verified against cited spans (Irrelevant excluded), malformed → not-supported, N-sample majority per claim. **Calibrated against ~50 human-labeled (answer, span) pairs** (judge-vs-human Cohen's kappa + Spearman + hallucination-class F1; single-annotator = *intra-rater*). *Method family: FActScore — cite as method, not its number.* |
+| **Citation faithfulness** | pointwise judge | `(supported + 0.5 * partial) / all_units`, using the answer units and retrieved source text resolved by exact `article_id#span` citations. Empty units/context score zero; malformed judgments count as unsupported. Missing or unresolved citations set faithfulness to zero. Live judge calibration remains planned. |
 
-**Outcome ≠ process.** A correct final answer reached via a *wrong* trajectory (lucky path, unnecessary tools, ungrounded-but-right) must **not** score full marks. Report an **outcome score** and a **process score** separately; a green outcome does not launder a bad path (premortem #4). The binary "correct outcome" that efficiency-gating and the §6 gate consume := `vital-recall == 1.0 AND no precision FP that contradicts the reference`; **citation-faithfulness is a *groundedness* check, not the correctness gate** (a grounded answer can still be wrong against the reference).
+**Report outcome and process separately.** The strict Tier-B `correct` gate requires full vital-nugget recall, full support for every generated answer unit against the reference, and nonempty, resolvable citations whose retrieved text fully supports the answer. Partial support fails this gate. Citation-ID coverage remains a separate Tier-A check; matching an ID alone does not establish support.
 
 ---
 

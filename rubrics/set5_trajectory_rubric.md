@@ -58,10 +58,19 @@ requires a prior retrieval; `synthesize` requires evidence unless the route was
 `legality=coverage=precedence=state_legality=1.0`, `arg_validity=1.0`,
 `gold_covered=True`.
 
-## Deferred to Tier B / build step 7 (spec §9)
+## Tier-B scoring and pending live evaluation
 
-- Answer-correctness **recall** (nugget scoring) and **citation faithfulness** —
-  pointwise judge, `eval/stats.py` + a keyed run.
-- **Adversarial** scenarios (`set5-adv-*`): prompt-injection channels + canary,
-  and injected-fault recovery — `eval/adversarial.py`, SHA-locked.
-- Authoring the full scenario set over the real Sift corpus.
+Tier B is implemented in `eval/tierb.py` and `eval/stats.py`. Author vital/optional
+nuggets and reference context. Precision and faithfulness score sentences/clauses
+from the generated answer, not a static rubric claim list. Faithfulness resolves
+the answer's exact citations against evidence text retained by the agent.
+
+Full support earns 1, partial support 0.5, and unsupported or malformed judgments
+0. Every unit stays in the denominator. The strict correctness gate requires
+full vital recall, full precision, and resolvable citations supporting every
+answer unit. Empty context/answer units or missing/invalid citations fail.
+
+The committed adversarial scenario includes a document payload, and all three
+agent responses are scripted. CI uses the keyword judge as a smoke adapter;
+model reliability, injection susceptibility, and judge calibration require
+separate live evaluation over the authored production-corpus scenarios.

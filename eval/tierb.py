@@ -1,14 +1,15 @@
 """
 Tier-B judged scoring (spec §6) — the pointwise-judge dimensions the key-free
 Tier-A gate cannot compute: answer-correctness (vital nugget recall + precision)
-and citation faithfulness. These need a live model, so they run in the deferred
-keyed nightly, NOT per-PR.
+and citation faithfulness. A CLI accepts a live judge; CI uses a keyword-based
+smoke adapter. No scheduled nightly workflow is configured here.
 
 `run_tierb` replays the SAME committed golden cassettes as Tier A (so the agent
 trajectory is deterministic and never re-invokes a live model — spec §3
 invariant), then drives ONLY the judge with a live (or key-free KeywordJudge)
-adapter over the scenario's authored nuggets/claims. Report per-scenario scores,
-an aggregate, and a seeded bootstrap CI (wide at this n by design).
+adapter over authored nuggets and the generated answer's sentence/clause units.
+Faithfulness uses retrieved source spans named by the actual citations.
+The committed responses are scripted fixtures, not live model measurements.
 """
 
 import json
@@ -17,8 +18,7 @@ from pathlib import Path
 
 from adapters.replay import ReplayAdapter
 from agent.loop import run_agent
-from agent.tools import build_mock_registry
-from eval.adversarial import with_injected_fault
+from eval.adversarial import build_scenario_registry
 from eval.stats import answer_correctness, citation_faithfulness, seeded_bootstrap_ci
 
 
@@ -48,15 +48,45 @@ def _load_scenarios(golden_dir):
 def _replay_run(sc, golden_dir):
     """Reproduce the scenario's agent run from its committed cassette (Tier A's
     trajectory), so Tier B judges the exact same final answer."""
-    registry = build_mock_registry()
+    registry = build_scenario_registry(sc)
     trh = registry.registry_hash()
-    if "fault" in sc:
-        f = sc["fault"]
-        registry = with_injected_fault(registry, f["tool"], f["fault"], f.get("fail_times"))
     cassette = json.loads((golden_dir / sc["cassette"]).read_text())
     adapter = ReplayAdapter(cassette, sc["model_id"], tool_registry_hash=trh)
     return run_agent(adapter, registry, sc["question"],
                      system_prompt=sc.get("system_prompt", ""), clock=_clock)
+
+
+def score_run(run, rubric, judge):
+    """Judge an answer against gold context and its cited, retrieved text.
+
+    A citation resolves only when its exact id#span has nonempty text in the
+    evidence captured by the agent. Gold reference text cannot fill that gap.
+    """
+    answer = run.final_answer or ""
+    ac = answer_correctness(judge, answer, rubric["nuggets"],
+                            reference_context=rubric.get("reference_context"))
+    sources = {f"{e['id']}#{e['span']}": e["text"] for e in run.evidence
+               if e.get("text", "").strip()}
+    invalid = sorted(set(run.citations) - sources.keys())
+    citations_valid = bool(run.citations) and not invalid
+    context = "\n".join(sources[c] for c in dict.fromkeys(run.citations) if c in sources)
+    faith = citation_faithfulness(judge, ac["claims"], context)
+    if not citations_valid:
+        faith["faithfulness"] = 0.0
+    return {
+        "recall": ac["recall"],
+        "vital_recall": ac["vital_recall"],
+        "precision": ac["precision"],
+        "f1": ac["f1"],
+        "correct": bool(ac["correct"] and citations_valid and ac["claims"]
+                        and faith["supported"] == len(ac["claims"])),
+        "faithfulness": faith["faithfulness"],
+        "claims": ac["claims"],
+        "citations_valid": citations_valid,
+        "invalid_citations": invalid,
+        "precision_detail": ac["precision_detail"],
+        "faithfulness_detail": faith,
+    }
 
 
 def run_tierb(golden_dir, judge) -> TierBResult:
@@ -75,27 +105,13 @@ def run_tierb(golden_dir, judge) -> TierBResult:
         if not nuggets:
             continue  # only scenarios with authored nuggets are judged
         run = _replay_run(sc, golden_dir)
-        answer = run.final_answer or ""
-        claims = rubric.get("claims")
-        reference = rubric.get("reference_context")
-
-        ac = answer_correctness(judge, answer, nuggets, claims=claims,
-                                reference_context=reference)
-        faith = None
-        if claims and reference is not None:
-            faith = citation_faithfulness(judge, claims, reference)
-        per_scenario.append({
-            "scenario_id": sc["scenario_id"],
-            "recall": ac["recall"],
-            "vital_recall": ac["vital_recall"],
-            "precision": ac["precision"],
-            "f1": ac["f1"],
-            "correct": ac["correct"],
-            "faithfulness": faith["faithfulness"] if faith else None,
-        })
+        per_scenario.append({"scenario_id": sc["scenario_id"],
+                             **score_run(run, rubric, judge)})
 
     scorecard = _aggregate(per_scenario)
     failures = _check(scorecard, thresholds)
+    if not per_scenario:
+        failures.append(("n_scenarios", 0, 1))
     return TierBResult(
         passed=(not failures),
         scorecard=scorecard,
@@ -117,7 +133,7 @@ def _aggregate(per_scenario):
         "mean_recall": round(sum(recalls) / len(recalls), 4),
         "mean_f1": round(sum(f1s) / len(f1s), 4),
         "correct_rate": round(sum(correct) / len(correct), 4),
-        # Seeded bootstrap CI on mean recall — wide at this n; report honestly.
+        # Descriptive interval over fixtures; not model-performance evidence.
         "recall_ci": seeded_bootstrap_ci(recalls),
     }
     if faiths:
@@ -135,13 +151,13 @@ def _check(scorecard, thresholds):
 
 
 def format_report(result: TierBResult) -> str:
-    lines = ["Tier-B judged scorecard (keyed nightly)"]
+    lines = ["Tier-B judged scorecard (replayed agent fixtures)"]
     for dim in ("mean_recall", "mean_f1", "mean_faithfulness", "correct_rate"):
         if dim in result.scorecard:
             lines.append(f"  {dim:20s} {result.scorecard[dim]}")
     ci = result.scorecard.get("recall_ci")
     if ci:
-        lines.append(f"  recall_ci            [{ci['lo']}, {ci['hi']}] (n={ci['n']}, wide by design)")
+        lines.append(f"  recall_ci            [{ci['lo']}, {ci['hi']}] (n={ci['n']}; fixture interval)")
     lines.append(f"  → {'PASS' if result.passed else 'FAIL'} "
                  f"({result.scorecard.get('n_scenarios', 0)} judged scenarios)")
     return "\n".join(lines)

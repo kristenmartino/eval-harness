@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 """
 Lock the adversarial trajectory set: compute its SHA-256 manifest and commit it
-(NOT the data). A clone of scripts/lock_holdout.py for the §5 adversarial suite —
-same discipline: lock the attacker-goal specs (injected args, canary, target
-assertions) ONCE, before any prompt iteration, so guardrail cases can't leak
-into the tuning loop (premortem #5). The runner/scorers verify against this
-manifest exactly as they do the held-out lock.
+(NOT the data). Records attacker-goal specs (injected args, canary, target
+assertions) as a baseline before tuning. This script writes a manifest; it does
+not prevent reading the dataset or establish that it was excluded from tuning.
 
 Usage:
     python scripts/lock_adversarial.py --dataset data/set5_adversarial.jsonl

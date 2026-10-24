@@ -2,10 +2,11 @@
 """
 Tier-B judged nightly (spec §6) — the KEYED counterpart to the per-PR Tier-A
 gate. Replays the committed golden trajectories (deterministic, no agent re-run)
-and drives the pointwise judge over the authored nuggets/claims to score
+and drives the pointwise judge over authored nuggets and generated answer units to score
 answer-correctness + citation faithfulness, then gates on tierb_thresholds.json.
 
-Runs on a schedule, not per-PR, because the judged dimensions need a live model.
+A CLI scaffold for a scheduled run; no nightly workflow is committed.
+The default agent cassettes are scripted, even when the judge is a live model.
 Use `--judge keyword` for a key-free dry run (same path CI smoke-tests).
 
 For the real nightly the judge should be CROSS-VENDOR (spec §7 / eval.judge):

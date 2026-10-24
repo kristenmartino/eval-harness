@@ -1,7 +1,8 @@
 {
   "must_pass": {
     "correct_rate": 1.0,
-    "mean_recall": 0.8
+    "mean_recall": 0.8,
+    "mean_faithfulness": 1.0
   },
-  "note": "Tier-B judged nightly (spec \u00a76). Needs a live judge; CI runs the key-free KeywordJudge smoke, the real nightly a cross-vendor LLM."
+  "note": "Tier-B gate over scripted agent fixtures. CI uses KeywordJudge for smoke tests; a live judge can be supplied through the CLI."
 }

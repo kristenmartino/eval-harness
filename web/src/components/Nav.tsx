@@ -3,7 +3,7 @@ import { site } from "@/content/site";
 
 const navItems = [
   { href: "/methodology", label: "Methodology" },
-  { href: "/leaderboard", label: "Leaderboard" },
+  { href: "/leaderboard", label: "Results status" },
   { href: "/executive-summary", label: "Summary" },
   { href: site.repoUrl, label: "GitHub", external: true },
 ];
@@ -11,14 +11,14 @@ const navItems = [
 export function Nav() {
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-[var(--color-graphite-90)] bg-[var(--color-soot)]/85 backdrop-blur-md">
-      <div className="mx-auto max-w-6xl px-6 md:px-10 h-14 flex items-center justify-between">
+      <div className="mx-auto max-w-6xl px-6 md:px-10 py-4 md:py-0 md:h-14 flex flex-col md:flex-row items-start md:items-center gap-3 md:gap-0 md:justify-between">
         <Link
           href="/"
-          className="font-mono text-[var(--text-meta)] tracking-[var(--tracking-mono-tight)] uppercase text-[var(--color-bone)] hover:text-[var(--color-signal-blue-soft)] transition-colors"
+          className="shrink-0 whitespace-nowrap font-mono text-[var(--text-meta)] tracking-[var(--tracking-mono-tight)] uppercase text-[var(--color-bone)] hover:text-[var(--color-signal-blue-soft)] transition-colors"
         >
           eval-harness
         </Link>
-        <ul className="flex items-center gap-5 md:gap-8">
+        <ul className="flex flex-wrap items-center gap-x-4 gap-y-2 md:gap-8">
           {navItems.map((item) => (
             <li key={item.href}>
               <Link

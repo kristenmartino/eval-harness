@@ -1,6 +1,6 @@
 # eval-harness web
 
-Marketing + methodology + leaderboard site for the [eval-harness](../) project.
+Implementation status and methodology site for the [eval-harness](../) project.
 
 Lives at https://evals.kristenmartino.ai.
 
@@ -22,11 +22,12 @@ Open http://localhost:3000.
 | Route | Source | Notes |
 |---|---|---|
 | `/` | `src/app/page.tsx` | Landing — elevator pitch + status |
-| `/methodology` | `src/app/methodology/page.mdx` | Full methodology page |
-| `/executive-summary` | `src/app/executive-summary/page.mdx` | Exec summary for hiring managers |
-| `/leaderboard` | `src/app/leaderboard/page.tsx` | Placeholder until Phase 1 results land |
+| `/methodology` | `src/app/methodology/content.mdx` | Full methodology page |
+| `/executive-summary` | `src/app/executive-summary/content.mdx` | Implemented scope and pending study work |
+| `/leaderboard` | `src/app/leaderboard/page.tsx` | Results status; no production rankings |
 
-MDX content is ported from `../docs/`. When the canonical docs change, update the MDX copies too. (Future: build-time pull from `../docs/` to eliminate drift.)
+Server page components hold route metadata; MDX files hold the article content.
+MDX content is ported from `../docs/`; tables use JSX because GFM is not configured. When the canonical docs change, update the MDX copies too. (Future: build-time pull from `../docs/` to eliminate drift.)
 
 ## Deployment
 

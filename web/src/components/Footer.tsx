@@ -6,7 +6,7 @@ export function Footer() {
     <footer className="border-t border-[var(--color-graphite-90)] mt-24">
       <div className="mx-auto max-w-6xl px-6 md:px-10 py-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="font-mono text-[var(--text-meta)] tracking-[var(--tracking-mono-tight)] uppercase text-[var(--color-graphite-40)]">
-          eval-harness &middot; methodology + leaderboard
+          eval-harness &middot; model evaluation tools
         </div>
         <div className="flex items-center gap-6 font-mono text-[var(--text-meta)] tracking-[var(--tracking-mono-tight)] uppercase">
           <Link

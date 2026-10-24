@@ -268,7 +268,8 @@ def build_mock_registry(corpus=None) -> ToolRegistry:
         # Deterministic order: overlap desc, then id asc.
         scored.sort(key=lambda t: (-t[0], t[1]))
         hits = [
-            {"id": aid, "title": by_id[aid]["title"], "score": score}
+            {"id": aid, "title": by_id[aid]["title"], "score": score,
+             "span": "0", "text": by_id[aid]["body"]}
             for score, aid in scored[:k]
         ]
         return ToolResult(value=hits, summary=f"{len(hits)} hits")

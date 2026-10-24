@@ -54,6 +54,7 @@ class TestWriter(unittest.TestCase):
                     "terminated", "parse_status", "n_samples", "trial_temperature"):
             self.assertIn(key, unit)
         self.assertEqual(unit["terminated"], "answered")
+        self.assertIn("2200", unit["evidence"][0]["text"])
 
     def test_roundtrip_jsonl(self):
         unit = _good_unit()
@@ -67,6 +68,7 @@ class TestWriter(unittest.TestCase):
             rows = [json.loads(x) for x in out.read_text().splitlines() if x.strip()]
             self.assertTrue(rows[0]["_meta"])
             self.assertEqual(rows[1]["scenario_id"], "set5-vogtle-001")
+            self.assertEqual(rows[1]["evidence"], unit["evidence"])
         finally:
             out.unlink(missing_ok=True)
 

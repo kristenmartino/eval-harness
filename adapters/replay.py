@@ -2,14 +2,12 @@
 ReplayAdapter — serve model completions from a cassette keyed by a canonical
 hash of the outgoing request (spec §6, Tier A).
 
-The Tier-A CI gate drives the REAL agent loop off recorded real-model responses:
-key-free and deterministic, yet it exercises the actual loop + scorer code. And
-because the key is a hash of the assembled request, a prompt / tool-schema /
-sampling-param edit changes the key → replay MISS → build fails ("re-record"),
-so a prompt edit CANNOT silently pass (VCR record_mode=none + Jest -u, fused).
+The Tier-A CI gate runs the agent loop using committed scripted responses.
+These fixtures test loop and scorer behavior, not live model quality. A change
+to a covered request's prompt, tool schema, or sampling parameters causes a
+replay miss until the fixture is regenerated and reviewed.
 
-Canonicalization is STRICT (freeze volatile fields) so only *semantic* edits
-move the hash — the prompt text, the sampling params, the model id, and the
+Canonicalization includes exact prompt text, sampling params, model id, and the
 tool-registry hash. Nothing clock- or host-derived enters the key.
 
 Re-recording is a local dev action (RecordingAdapter over a real/scripted
