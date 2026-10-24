@@ -1,0 +1,32 @@
+export const metadata = {
+  title: "Project Summary — Eval Harness",
+  description: "Implemented evaluation tools, planned study work, and scoring limitations for Sift.",
+};
+
+# Eval Harness
+
+A Python evaluation harness for Sift, a news-processing application. It implements categorization and summarization tasks, model adapters, and scripted agent regression tests. The production-corpus comparison has not run, and no model rankings or routing recommendations are published.
+
+## Implemented
+
+- **Task runs:** Ollama, Anthropic, OpenAI, and mock adapters; JSONL output; resume checks; transient-error retries; categorization metrics; pairwise summary judging and Bradley–Terry ranking.
+- **Dataset integrity:** held-out opt-in and SHA-256 manifest checks. These detect dataset changes through the runner. They cannot establish whether someone inspected the data elsewhere.
+- **Agent tests:** three scripted replay scenarios cover retrieval, a transient search failure, and an instruction injected into retrieved text. Source text is passed to the agent and retained in the run record.
+- **Outcome scoring:** authored nuggets measure recall; sentences and clauses from the generated answer are checked for support. Citation faithfulness uses the retrieved spans actually cited. Partial support receives half credit and fails the strict correctness gate. Missing or unresolved citations fail that gate.
+
+The scripted fixtures test the loop and scoring code. The keyword judge used in CI is a deterministic smoke-test adapter; its scores are not evidence of model quality or security.
+
+## Planned comparison
+
+The original study proposes nine local and API models across categorization, summarization, entity extraction, and RAG. The extraction and Task D benchmark modules remain to be implemented. The separate agent track already exercises retrieval with mock tools.
+
+Before publishing results, the study needs the Sift corpus, annotations, judge calibration, hardware timing, and full model runs. Cost comparisons require measured power and latency, hardware assumptions, and API rates recorded at execution time.
+
+The pairwise judge routing avoids Sonnet judging Anthropic candidates. It does not remove all self-judging: GPT-4o still judges an Anthropic-versus-GPT-4o pair. The planned overlap study has not been measured.
+
+## Run locally
+
+The repository's examples and tests run without API keys. See the [README](https://github.com/kristenmartino/eval-harness#readme) for commands, the [methodology](/methodology) for scoring details, and [results status](https://evals.kristenmartino.ai/leaderboard) for outstanding measurements.
+
+**Source:** [github.com/kristenmartino/eval-harness](https://github.com/kristenmartino/eval-harness)
+**Owner:** Kristen Martino
