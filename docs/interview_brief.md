@@ -19,7 +19,7 @@
 
 **Outcome.** Added GPT-4o to the model lineup as a result, which had the side effect of making it a candidate too. The design estimates marginal judging cost; this is not measured spending.
 
-**Principle.** *When an eval has an unfalsifiable result, fix the methodology, not the result.*
+**Principle.** *Document a judge's remaining biases alongside the controls used to reduce them.*
 
 ---
 
@@ -101,7 +101,7 @@
 
 **Decision.** Built a `MockAdapter` that returns canned responses, plus sample datasets (a dev sample and a held-out fixture) that live outside the real dev and holdout sets. The full harness pipeline (adapter → task → runner → JSONL → metric aggregation) runs end-to-end on the sample. Unit tests cover the load-bearing math (Bradley-Terry MM, macro-F1 with length guards, accuracy with parse failures, JSONL with line-number errors), judge verdict parsing (a malformed verdict is flagged, never silently scored as a tie), and the runner's held-out gate. The runner implements part of the held-out protocol: the runner refuses a held-out set without `--include-held-out` and verifies it against a committed SHA-256 lock before scoring. This detects changes to a recognized held-out set; it cannot prevent operator access, relabeling, or contamination during tuning.
 
-**Outcome.** Pipeline verified before any real model runs. When Sift's corpus is pulled and the real eval begins, the harness is known-correct.
+**Outcome.** Sample runs exercise the pipeline before the real study. Passing those fixtures supports the covered runner and scorer behaviors; real-corpus evaluation and judge calibration remain separate work.
 
 **Principle.** *Rigor isn't slowness — it's instrumentation that lets you ship faster downstream.*
 
