@@ -2,6 +2,7 @@
 
 **Purpose:** Rehearsable 60–90 second answers for behavioral and technical-fit interviews. Each story maps to a real decision documented in the spec / noodle / CHANGELOG.
 **Audience:** Internal — for delivery practice, not publication.
+**Evidence boundary:** These are design decisions and implemented harness components. Full corpus runs, judge calibration, and deployment recommendations remain pending; do not present planned outcomes as measured results.
 **Format:** Setup → Tradeoff → Decision → Outcome → Principle.
 
 ---
@@ -12,13 +13,13 @@
 
 **Setup.** I was building an eval that uses Claude Sonnet to judge a pairwise summarization comparison — Sonnet looks at two summaries and picks the better one. Standard LLM-as-judge setup. But Sonnet was also one of the models I was evaluating. Sonnet was judging its own outputs.
 
-**Tradeoff.** Self-preference bias in LLM judges is well-documented — Zheng et al. 2023 showed judges score their own outputs measurably higher. Either I find a way to control for it, or Sonnet's eval result is unfalsifiable.
+**Tradeoff.** Self-preference bias in LLM judges is well-documented — Zheng et al. 2023 showed judges score their own outputs measurably higher. Either I find a way to control for it, or the result risks systematic self-preference bias.
 
-**Decision.** Cross-vendor judge architecture. Sonnet 4.6 judges non-Anthropic-containing pairs only — 21 of 36 pairs at 9 models. GPT-4o judges Anthropic-containing pairs — the other 15. To make sure the two judges are calibrated to a common scale, a 50-pair overlap subset is judged by both, and I report inter-judge Cohen's kappa. If kappa drops below 0.6 the methodology limitation is flagged on the leaderboard.
+**Decision.** Cross-vendor judge architecture. Sonnet 4.6 judges non-Anthropic-containing pairs only — 21 of 36 pairs at 9 models. GPT-4o judges Anthropic-containing pairs — the other 15. The planned agreement check uses a 50-pair overlap subset judged by both and reports Cohen's kappa. It has not yet established judge agreement; GPT-4o can also judge pairs containing GPT-4o. If kappa drops below 0.6 the methodology limitation is flagged on the leaderboard.
 
-**Outcome.** Added GPT-4o to the model lineup as a result, which had the side effect of making it a candidate too. Total marginal cost: $0.16 against a $99 budget.
+**Outcome.** Added GPT-4o to the model lineup as a result, which had the side effect of making it a candidate too. The design estimates marginal judging cost; this is not measured spending.
 
-**Principle.** *When an eval has an unfalsifiable result, fix the methodology, not the result.*
+**Principle.** *Document a judge's remaining biases alongside the controls used to reduce them.*
 
 ---
 
@@ -42,7 +43,7 @@
 
 ### Topic: 70B Llama in the lineup but excluded from deployment view
 
-**Setup.** Llama 3.1 70B Q4 was originally one of the open-weight models I was testing. Pre-flight analysis showed throughput on my DGX Spark hardware would be ~10–15 tok/s — roughly 20 seconds per article. At Sift's daily volume of thousands of articles, that's not deployable.
+**Setup.** Llama 3.1 70B Q4 was originally one of the open-weight models I was testing. The design assumed throughput on DGX Spark hardware of ~10–15 tok/s — roughly 20 seconds per article. At Sift's daily volume of thousands of articles, deployment feasibility needs a timing measurement.
 
 **Tradeoff.** If I report 70B's quality in the leaderboard like the other models, the comparison implies it's a viable production choice. If I drop 70B entirely, I lose a useful "what's the upper bound of open-weight on this workload" reference point.
 
@@ -98,9 +99,9 @@
 
 **Setup.** The held-out 20% can't be touched during prompt iteration. But the harness needs end-to-end testing before the real eval runs. How do I validate the pipeline without burning held-out items?
 
-**Decision.** Built a `MockAdapter` that returns canned responses, plus sample datasets (a dev sample and a held-out fixture) that live outside the real dev and holdout sets. The full harness pipeline (adapter → task → runner → JSONL → metric aggregation) runs end-to-end on the sample. 58 unit tests cover the load-bearing math (Bradley-Terry MM, macro-F1 with length guards, accuracy with parse failures, JSONL with line-number errors), judge verdict parsing (a malformed verdict is flagged, never silently scored as a tie), and the runner's held-out gate. And the held-out discipline isn't policy — it's enforced in code: the runner refuses a held-out set without `--include-held-out` and verifies it against a committed SHA-256 lock before scoring.
+**Decision.** Built a `MockAdapter` that returns canned responses, plus sample datasets (a dev sample and a held-out fixture) that live outside the real dev and holdout sets. The full harness pipeline (adapter → task → runner → JSONL → metric aggregation) runs end-to-end on the sample. Unit tests cover the load-bearing math (Bradley-Terry MM, macro-F1 with length guards, accuracy with parse failures, JSONL with line-number errors), judge verdict parsing (a malformed verdict is flagged, never silently scored as a tie), and the runner's held-out gate. The runner implements part of the held-out protocol: the runner refuses a held-out set without `--include-held-out` and verifies it against a committed SHA-256 lock before scoring. This detects changes to a recognized held-out set; it cannot prevent operator access, relabeling, or contamination during tuning.
 
-**Outcome.** Pipeline verified before any real model runs. When Sift's corpus is pulled and the real eval begins, the harness is known-correct.
+**Outcome.** Sample runs exercise the pipeline before the real study. Passing those fixtures supports the covered runner and scorer behaviors; real-corpus evaluation and judge calibration remain separate work.
 
 **Principle.** *Rigor isn't slowness — it's instrumentation that lets you ship faster downstream.*
 
