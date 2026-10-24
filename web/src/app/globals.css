@@ -128,6 +128,63 @@ body {
 }
 
 /* ── tables inside MDX ── */
+.baseline-results h1 {
+  font-size: var(--text-h1);
+  font-weight: 600;
+  letter-spacing: var(--tracking-display);
+  line-height: var(--leading-tight);
+  margin-bottom: 1.5rem;
+}
+
+.baseline-results h2 {
+  font-size: var(--text-h3);
+  font-weight: 600;
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-snug);
+  margin: 3rem 0 1.25rem;
+}
+
+.baseline-results p,
+.baseline-results ul {
+  max-width: 48rem;
+  color: var(--color-graphite-20);
+  font-size: 1rem;
+  line-height: var(--leading-relaxed);
+  margin-bottom: 1.25rem;
+}
+
+.baseline-results ul {
+  list-style: disc;
+  padding-left: 1.5rem;
+}
+
+.baseline-results li + li {
+  margin-top: 0.75rem;
+}
+
+.baseline-results strong {
+  color: var(--color-bone);
+  font-weight: 600;
+}
+
+.baseline-results code {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+}
+
+.baseline-results a {
+  color: var(--color-signal-blue-soft);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+@media (min-width: 768px) {
+  .baseline-results p,
+  .baseline-results ul {
+    font-size: 1.125rem;
+  }
+}
+
 .prose-mdx table {
   width: 100%;
   max-width: 56rem;

@@ -1,0 +1,272 @@
+{
+  "schema": "categorization-development-agreement/v1",
+  "run_id": "llama31_8b_q4_A_dev_20261024",
+  "date": "2026-10-24",
+  "label": "Development agreement baseline",
+  "task": "Article categorization",
+  "model": {
+    "name": "Llama 3.1 8B Instruct Q4_K_M",
+    "tag": "llama3.1:8b-instruct-q4_K_M",
+    "artifact_type": "Ollama manifest SHA-256",
+    "artifact_sha256": "46e0c10c039e019119339687c3c1757cc81b9da49709a3b3924863ba87ca666e"
+  },
+  "reference_labels": "Existing Sift production category labels; model-assigned and not independently human-validated",
+  "held_out_evaluation": false,
+  "n_scored": 400,
+  "n_reference_categories": 10,
+  "n_prompt_categories": 11,
+  "reference_categories": [
+    "business",
+    "energy",
+    "entertainment",
+    "general",
+    "health",
+    "politics",
+    "science",
+    "sports",
+    "technology",
+    "world"
+  ],
+  "matched": 319,
+  "disagreements": 81,
+  "agreement": 0.7975,
+  "macro_f1": 0.7597905265277933,
+  "macro_f1_interval": {
+    "low": 0.7100006325706375,
+    "high": 0.803524659790701,
+    "confidence": 0.95,
+    "bootstrap_resamples": 1000,
+    "bootstrap_seed": 0,
+    "interpretation": "Descriptive bootstrap interval over this development sample and its stored labels"
+  },
+  "execution": {
+    "coverage": 1.0,
+    "errors": 0,
+    "parse_failures": 0,
+    "transient_retries": 0
+  },
+  "corpus": {
+    "unique_source_matched_inputs": 962,
+    "selected": 500,
+    "development": 400,
+    "reserved_holdout": 100,
+    "development_outlets": 55,
+    "development_fresh_inputs": 205,
+    "development_saved_inputs": 195,
+    "development_published_dates": [
+      "2024-10-10",
+      "2026-10-24"
+    ],
+    "input": "Original RSS title, source, and HTML-stripped body capped at 500 words; generated summaries and stored category fields excluded from article input",
+    "sampling_seed": 20261024,
+    "minimum_category_pool": 20,
+    "excluded_reference_categories": {
+      "top": 14
+    },
+    "scope": "Stratified captured-input cohort, not a random recent-production sample"
+  },
+  "sampling": {
+    "temperature": 0,
+    "seed": 20261024,
+    "max_output_tokens": 10
+  },
+  "runtime": {
+    "os": "Darwin",
+    "architecture": "arm64",
+    "ollama_version": "0.40.10",
+    "python": "3.14.6",
+    "generation_http_latency_ms": {
+      "p50": 663.0357499998354,
+      "p95": 3618.005691349024,
+      "sum": 525299.1894220613,
+      "scope": "generation HTTP request only; digest verification is outside this timer"
+    },
+    "token_usage": {
+      "input": 385583,
+      "output": 992,
+      "max_input_per_request": 1561
+    }
+  },
+  "per_category": [
+    {
+      "category": "business",
+      "support": 31,
+      "matched": 23,
+      "predicted": 28,
+      "precision_vs_stored_labels": 0.8214285714285714,
+      "recall_vs_stored_labels": 0.7419354838709677,
+      "f1_vs_stored_labels": 0.7796610169491526
+    },
+    {
+      "category": "energy",
+      "support": 16,
+      "matched": 14,
+      "predicted": 19,
+      "precision_vs_stored_labels": 0.7368421052631579,
+      "recall_vs_stored_labels": 0.875,
+      "f1_vs_stored_labels": 0.7999999999999999
+    },
+    {
+      "category": "entertainment",
+      "support": 66,
+      "matched": 54,
+      "predicted": 61,
+      "precision_vs_stored_labels": 0.8852459016393442,
+      "recall_vs_stored_labels": 0.8181818181818182,
+      "f1_vs_stored_labels": 0.8503937007874016
+    },
+    {
+      "category": "general",
+      "support": 23,
+      "matched": 4,
+      "predicted": 4,
+      "precision_vs_stored_labels": 1.0,
+      "recall_vs_stored_labels": 0.17391304347826086,
+      "f1_vs_stored_labels": 0.29629629629629634
+    },
+    {
+      "category": "health",
+      "support": 28,
+      "matched": 21,
+      "predicted": 24,
+      "precision_vs_stored_labels": 0.875,
+      "recall_vs_stored_labels": 0.75,
+      "f1_vs_stored_labels": 0.8076923076923077
+    },
+    {
+      "category": "politics",
+      "support": 103,
+      "matched": 95,
+      "predicted": 131,
+      "precision_vs_stored_labels": 0.7251908396946565,
+      "recall_vs_stored_labels": 0.9223300970873787,
+      "f1_vs_stored_labels": 0.811965811965812
+    },
+    {
+      "category": "science",
+      "support": 21,
+      "matched": 19,
+      "predicted": 28,
+      "precision_vs_stored_labels": 0.6785714285714286,
+      "recall_vs_stored_labels": 0.9047619047619048,
+      "f1_vs_stored_labels": 0.7755102040816326
+    },
+    {
+      "category": "sports",
+      "support": 35,
+      "matched": 31,
+      "predicted": 35,
+      "precision_vs_stored_labels": 0.8857142857142857,
+      "recall_vs_stored_labels": 0.8857142857142857,
+      "f1_vs_stored_labels": 0.8857142857142857
+    },
+    {
+      "category": "technology",
+      "support": 31,
+      "matched": 29,
+      "predicted": 36,
+      "precision_vs_stored_labels": 0.8055555555555556,
+      "recall_vs_stored_labels": 0.9354838709677419,
+      "f1_vs_stored_labels": 0.8656716417910448
+    },
+    {
+      "category": "world",
+      "support": 46,
+      "matched": 29,
+      "predicted": 34,
+      "precision_vs_stored_labels": 0.8529411764705882,
+      "recall_vs_stored_labels": 0.6304347826086957,
+      "f1_vs_stored_labels": 0.725
+    }
+  ],
+  "largest_disagreements": [
+    {
+      "stored_category": "world",
+      "model_category": "politics",
+      "n": 14
+    },
+    {
+      "stored_category": "general",
+      "model_category": "politics",
+      "n": 10
+    },
+    {
+      "stored_category": "business",
+      "model_category": "politics",
+      "n": 6
+    },
+    {
+      "stored_category": "entertainment",
+      "model_category": "politics",
+      "n": 5
+    },
+    {
+      "stored_category": "entertainment",
+      "model_category": "technology",
+      "n": 4
+    },
+    {
+      "stored_category": "general",
+      "model_category": "entertainment",
+      "n": 4
+    },
+    {
+      "stored_category": "health",
+      "model_category": "science",
+      "n": 3
+    },
+    {
+      "stored_category": "business",
+      "model_category": "technology",
+      "n": 2
+    },
+    {
+      "stored_category": "entertainment",
+      "model_category": "sports",
+      "n": 2
+    },
+    {
+      "stored_category": "general",
+      "model_category": "world",
+      "n": 2
+    }
+  ],
+  "provenance": {
+    "started_at": "2026-10-24T07:26:22Z",
+    "base_git_commit": "6e37a1103443e1d62c712d350820b15e83d99525",
+    "run_code_state": "Run-enablement changes were uncommitted at execution. Executed sources were snapshotted and hashed; the base commit alone is not the complete run code.",
+    "source_sha256": {
+      "eval/runner.py": "d491bbc479875d4ba10fc4767e8ccc01b633f23f25fcac7ad583227be3a6685d",
+      "eval/metrics.py": "81d86a0149836a5d73c6c3c6141c7314f21d04f1c069e0e2ba635b478783d4ec",
+      "eval/corpus.py": "ac421d6b9e8a953bfcd3f748325e6e4fd63c143831593b23c4ad598a484955d0",
+      "tasks/categorization.py": "0ff423d30e34a57f87472b0dbd4ff3ae50ded12372aa890e77d3d9d7257022e1",
+      "adapters/ollama.py": "8bce0198e9fcefa93577c078ecf68d92b9e672fb6d0c1c39537960566d251ba7",
+      "adapters/base.py": "87006225530b918c5c7767af584ddf3c2cae3ed9ddf2c0f8f091f413588dea8c",
+      "utils.py": "d3908bf25cb792053bb26523338d9db3f41bd985ca60acb6cf71a0a578c827b4",
+      "scripts/pull_sift_corpus.py": "6ec764048fdf14adb7805ecfbf1e9ff56ba637b1e856d045cf7f4881d6c8fb1e"
+    },
+    "development_dataset_sha256": "18985deacb5fd0beb4b3945b1c0799d842e503bfe3b84e7380c19e9cd3c031d1",
+    "reserved_holdout_aggregate_sha256": "5be3fdfd72ced97e24635189366c08cace1c83e6da80cfeafd20e20bfd26e39e",
+    "results_sha256": "dc4d78f4b3a90159980f348501ed7ca0a276565b28a8343490e1a4eca0bbbcb5",
+    "metrics_sha256": "d75777c0726c39d51a9818c33c75e33a73adaf90928f703cc03897c32fc7ecde",
+    "public_evidence": "Aggregate measurements, configuration, and hashes. Article text and per-item run artifacts remain local."
+  },
+  "verification": {
+    "exact_expected_item_coverage": true,
+    "unique_result_items": true,
+    "holdout_unchanged": true,
+    "holdout_ids_urls_content_disjoint": true,
+    "holdout_manifest_verified": true,
+    "frozen_source_hashes_verified": true,
+    "held_out_evaluated": false
+  },
+  "limitations": [
+    "Agreement with model-assigned labels is not independently validated correctness.",
+    "One development run does not establish a model ranking or justify production routing changes.",
+    "The classifier uses Sift category rules in a categorization-only prompt, not the production batch summarization operation.",
+    "The top category had only 14 unique captured inputs and was excluded from reference sampling; it remained a valid model output.",
+    "Energy has 16 development items; class-level estimates are particularly uncertain.",
+    "This ran on local macOS ARM64, not DGX Spark; measured generation HTTP latency excludes digest checks and is not a cost comparison.",
+    "The 100-item reserved holdout has not been evaluated; independent label review remains required for the final comparison."
+  ]
+}

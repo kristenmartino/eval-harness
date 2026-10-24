@@ -31,6 +31,7 @@ results/out.jsonl --adapter mock`. Held-out sets require --include-held-out.
 """
 
 import argparse
+from dataclasses import asdict, replace
 import hashlib
 import json
 import socket
@@ -60,6 +61,7 @@ class ResumeHeaderMismatch(RuntimeError):
 # vary across resume invocations, so they are NOT part of the resume check.
 _RESUME_IDENTITY_KEYS = (
     "model_id", "task", "dataset_sha256_prefix", "n_samples", "held_out",
+    "task_configuration", "sampling_params",
 )
 
 
@@ -169,6 +171,9 @@ def _header_row(adapter: ModelAdapter, task: Task, dataset_path: Path,
         "_meta": True,
         "model_id": adapter.model_id,
         "task": task.name,
+        "task_configuration": task.configuration() if hasattr(task, "configuration") else None,
+        "sampling_params": {**asdict(task.sampling_params),
+                            "stop_sequences": list(task.sampling_params.stop_sequences)},
         "dataset_path": str(dataset_path),
         "dataset_sha256_prefix": _dataset_hash(dataset_path),
         "n_samples": n_samples,
@@ -382,15 +387,18 @@ def _build_adapter(args):
         return OpenAIAdapter(_require(args.model_id, "--model-id"))
     if args.adapter == "ollama":
         from adapters.ollama import OllamaAdapter
+        if not args.hf_sha and not args.model_digest:
+            raise ValueError("ollama requires --hf-sha or --model-digest")
         return OllamaAdapter(
             _require(args.model_id, "--model-id"),
-            _require(args.hf_sha, "--hf-sha"),
+            args.hf_sha,
             host=args.ollama_host,
+            model_digest=args.model_digest,
         )
     raise ValueError(f"unknown adapter {args.adapter!r}")
 
 
-def _build_task(name: str):
+def _build_task(name: str, categories_file=None):
     from tasks import categorization, summarization
     registry = {
         "A": categorization.task, "categorization": categorization.task,
@@ -398,6 +406,12 @@ def _build_task(name: str):
     }
     if name not in registry:
         raise ValueError(f"unknown task {name!r}; choose from {sorted(registry)}")
+    if categories_file:
+        if name not in ("A", "categorization"):
+            raise ValueError("--categories-file applies only to categorization")
+        config = json.loads(Path(categories_file).read_text())
+        return categorization.CategorizationTask(categories=config["categories"],
+                                                instructions=config.get("instructions", ""))
     return registry[name]
 
 
@@ -413,6 +427,8 @@ def _build_parser() -> argparse.ArgumentParser:
         description="Run one (adapter, task, dataset) eval into a results JSONL.",
     )
     p.add_argument("--task", required=True, help="A|categorization|B|summarization")
+    p.add_argument("--categories-file", type=Path, default=None,
+                   help="Task A JSON with categories and optional instructions")
     p.add_argument("--dataset", required=True, type=Path)
     p.add_argument("--output", required=True, type=Path)
     p.add_argument("--adapter", default="mock",
@@ -420,6 +436,8 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--model-id", default=None,
                    help="model snapshot id (e.g. claude-sonnet-4-6-20260101)")
     p.add_argument("--hf-sha", default=None, help="HF SHA for ollama model pinning")
+    p.add_argument("--model-digest", default=None,
+                   help="Full observed Ollama manifest SHA-256 (distinct from an HF commit)")
     p.add_argument("--ollama-host", default="http://localhost:11434",
                    help="base URL of the Ollama server (ollama adapter only; "
                         "e.g. http://dgx-spark.local:11434 to drive a remote box "
@@ -427,6 +445,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--mock-responses", default=None,
                    help="JSON file mapping prompt-substring -> response (mock adapter)")
     p.add_argument("--n-samples", type=int, default=1)
+    p.add_argument("--seed", type=int, default=None, help="Sampling seed where supported by the adapter")
     p.add_argument("--max-attempts", type=int, default=3,
                    help="total attempts per item incl. the first try (1 disables retry)")
     p.add_argument("--backoff-base", type=float, default=0.5,
@@ -445,8 +464,11 @@ def main(argv=None) -> int:
 
     repo_root = args.repo_root or Path(__file__).resolve().parent.parent
     try:
+        task = _build_task(args.task, args.categories_file)
+        if args.seed is not None:
+            task.sampling_params = replace(task.sampling_params, seed=args.seed)
         summary = run(
-            _build_adapter(args), _build_task(args.task), args.dataset, args.output,
+            _build_adapter(args), task, args.dataset, args.output,
             n_samples=args.n_samples, repo_root=repo_root,
             include_held_out=args.include_held_out, split=args.split,
             holdout_manifest=args.holdout_manifest,

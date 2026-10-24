@@ -2,6 +2,19 @@
 
 ## 2026-10-24
 
+### Published development agreement baseline
+
+- Publish the first categorization measurements at `/leaderboard`, labeled as development agreement with model-assigned labels, with the 100-item holdout explicitly unevaluated. Include category counts/F1, scope, runtime caveats, and downloadable aggregate JSON with provenance hashes.
+- Update the homepage, summary, methodology, and report to distinguish the completed development run from the pending final comparison. Article text, per-item outputs, and private machine paths are excluded from public artifacts.
+
+### First real Task A development baseline
+
+- Captured 549 usable original RSS inputs and matched them plus 600 saved inputs to read-only Sift production-label snapshots. Rejected changed titles/unmatched URLs and deduplicated to 962 source-matched inputs. Selected 500 with a fixed seed: 400 development and 100 reserved holdout. Article text remains in ignored directories; summaries are not used as classifier input.
+- Added deterministic corpus selection, an exporter using Sift's environment, explicit category/routing configuration, exact-label parsing, and sampling/task configuration in resume identity. Ollama runs can identify and check an observed manifest SHA-256 without mislabeling it as an HF commit.
+- Local Llama 3.1 8B Instruct Q4_K_M: 319/400 stored-label matches (79.8% agreement), macro-F1 0.7598, descriptive bootstrap interval 0.7100–0.8035, no errors/retries/parse failures. The labels are not independently reviewed gold. Ten reference categories were sampled; `top` lacked 20 unique source inputs in this pool. The 100-item holdout was not evaluated.
+- The run uses macOS ARM64 Ollama 0.40.10, not DGX Spark. Exact uncommitted run-source files, source hashes, model digest, task rules, dataset hashes, command, and per-item outputs were saved locally with the report.
+- Validation: 199 tests pass (14 new), plus existing examples and trajectory/held-out fixture checks. Actual result IDs match all 400 development IDs exactly; held-out file/manifest and source snapshots verify unchanged.
+
 ### Fixed
 
 - Pass retrieved source text to agent synthesis and critique; retain cited evidence in trajectory JSONL. Preserve multiline answers for downstream scoring.
@@ -15,7 +28,7 @@
 
 - 185 unit/regression tests pass (20 added), along with Tier A, the keyword Tier-B smoke, and the registry lock.
 - Web production build and lint pass. All four routes checked at 375px; homepage and methodology also checked at desktop width.
-- Live model evaluation and production-corpus rankings remain pending.
+- At this earlier harness-fix checkpoint, live model evaluation and production-corpus rankings were pending.
 
 ## 2026-07-11
 

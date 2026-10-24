@@ -3,7 +3,7 @@ import { site } from "@/content/site";
 
 const navItems = [
   { href: "/methodology", label: "Methodology" },
-  { href: "/leaderboard", label: "Results status" },
+  { href: "/leaderboard", label: "Results" },
   { href: "/executive-summary", label: "Summary" },
   { href: site.repoUrl, label: "GitHub", external: true },
 ];

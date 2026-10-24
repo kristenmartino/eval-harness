@@ -29,6 +29,7 @@ env/
 # Results (per-machine outputs — regenerable; contain hostnames + filesystem paths)
 results/*.jsonl
 results/*.json
+results/*.report.md
 !results/.gitkeep
 
 # Sift data — NEVER commit production article corpora
@@ -36,6 +37,7 @@ data/corpus.jsonl
 data/articles.jsonl
 data/holdout/
 data/dev/
+data/private/
 !data/sample_*.jsonl
 
 # Secrets — NEVER commit

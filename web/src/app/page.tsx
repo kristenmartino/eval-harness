@@ -1,10 +1,11 @@
 import Link from "next/link";
+import { categorizationBaseline as baseline } from "@/content/categorization";
 
 export default function HomePage() {
   return (
     <div className="mx-auto max-w-6xl px-6 md:px-10 py-20 md:py-32">
       <div className="mb-6 font-mono text-[var(--text-caption)] tracking-[var(--tracking-mono)] uppercase text-[var(--color-signal-blue-soft)]">
-        Harness implemented &middot; Production evaluation pending
+        First development agreement baseline &middot; October 24, 2026
       </div>
 
       <h1
@@ -25,31 +26,33 @@ export default function HomePage() {
       </p>
 
       <p className="text-base md:text-lg leading-relaxed text-[var(--color-graphite-40)] max-w-3xl mb-12">
-        The production corpus has not been evaluated. The repository contains
-        runnable examples and tests; model rankings, cost measurements, and
-        routing recommendations are pending.
+        First result: Llama 3.1 8B matched {(baseline.agreement * 100).toFixed(1)}%
+        {" "}of Sift&apos;s stored category labels on {baseline.n_scored} real
+        development articles, with macro-F1 {baseline.macro_f1.toFixed(4)}.
+        These labels are model-assigned and have not been independently
+        reviewed by humans. The {baseline.corpus.reserved_holdout}-item holdout remains unevaluated.
       </p>
 
       <div className="flex flex-wrap gap-4 mb-20">
         <Link
-          href="/methodology"
+          href="/leaderboard"
           className="px-5 py-3 bg-[var(--color-signal-blue)] text-[var(--color-bone)] hover:bg-[var(--color-signal-blue-deep)] transition-colors font-mono text-[var(--text-small)] tracking-[var(--tracking-mono-tight)] uppercase"
         >
-          Read the methodology &rarr;
+          View development baseline &rarr;
         </Link>
         <Link
-          href="/executive-summary"
+          href="/methodology"
           className="px-5 py-3 border border-[var(--color-graphite-80)] text-[var(--color-bone)] hover:border-[var(--color-graphite-40)] transition-colors font-mono text-[var(--text-small)] tracking-[var(--tracking-mono-tight)] uppercase"
         >
-          Executive summary
+          Methodology
         </Link>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-[var(--color-graphite-90)] border border-[var(--color-graphite-90)] max-w-5xl">
         <FeatureCell
-          label="Task evaluation"
-          value="Categorization + summaries"
-          detail="Task modules, JSONL runs, categorization metrics, and pairwise summary judging are implemented. Extraction and the Task D benchmark are planned."
+          label="Categorization development baseline"
+          value={`${(baseline.agreement * 100).toFixed(1)}% stored-label agreement`}
+          detail={`${baseline.matched}/${baseline.n_scored} labels matched across ten reference categories. This measures agreement with existing model-assigned labels, not human-validated accuracy.`}
         />
         <FeatureCell
           label="Agent regression tests"
@@ -58,8 +61,8 @@ export default function HomePage() {
         />
         <FeatureCell
           label="Study status"
-          value="Real-data runs pending"
-          detail="The comparison still needs corpus collection, annotations, judge calibration, hardware timing, and measured costs. No model rankings are published."
+          value={`${baseline.corpus.reserved_holdout} held out`}
+          detail="The reserved set is unevaluated. Independent label review, a final held-out comparison, more model runs, and measured costs remain pending."
         />
       </div>
 
@@ -88,10 +91,10 @@ export default function HomePage() {
               href="/leaderboard"
               className="text-[var(--color-signal-blue-soft)] underline underline-offset-4 decoration-[var(--color-graphite-80)] hover:decoration-[var(--color-signal-blue)]"
             >
-              Results status
+              Development results
             </Link>
-            &nbsp;&mdash; current results status and the measurements needed
-            before publishing a comparison.
+            &nbsp;&mdash; measured categorization agreement, sample scope,
+            category breakdown, and a downloadable aggregate artifact.
           </li>
           <li>
             <Link
